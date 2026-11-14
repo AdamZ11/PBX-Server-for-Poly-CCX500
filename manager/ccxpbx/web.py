@@ -724,7 +724,7 @@ SETTING_HELP = {
     "phone_user_password": "Telefon user jelszó: legfeljebb 32 karakter, szóköz, idézőjel, \\ és ` nélkül",
 }
 SETTING_BOOLS = ("lock_prov_server", "prov_polling", "clock_24h", "paging_enabled", "intercom_unmute",
-                 "rest_api", "web_ui", "softkey_park", "softkey_record")
+                 "rest_api", "web_ui", "softkey_park", "softkey_record", "led_incoming", "led_voicemail")
 
 
 @router.get("/settings", response_class=HTMLResponse)

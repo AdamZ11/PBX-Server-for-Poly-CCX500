@@ -17,6 +17,10 @@ def test_site_cfg_is_valid_xml_with_core_params(snap):
     assert params["voIpProt.SIP.alertInfo.1.value"] == plan.INTERCOM_ALERT
     assert params["softkey.1.action"] == "#72$Tdtmf$"
     assert params["tcpIpApp.sntp.daylightSavings.start.dayOfWeek.lastInMonth"] == "1"
+    assert params["call.offering.led"] == "1"
+    snap["settings"]["led_incoming"] = "0"
+    assert poly.site_params(snap)["call.offering.led"] == "0"
+    snap["settings"]["led_incoming"] = "1"
     root = ET.fromstring(poly.render_cfg(params, "x").encode())
     attrs = {k: v for el in root for k, v in el.attrib.items()}
     assert attrs == params
@@ -27,6 +31,7 @@ def test_phone_cfg_lines_and_keys(snap):
     assert p["reg.1.address"] == "2001"
     assert p["reg.1.lineKeys"] == "2"
     assert p["msg.mwi.1.callBack"] == "*97"
+    assert p["msg.mwi.1.led"] == "1"
     assert p["lineKey.reassignment.enabled"] == "1"
     assert (p["lineKey.1.category"], p["lineKey.1.index"]) == ("Line", "1")
     assert p["attendant.resourceList.1.address"] == "700"

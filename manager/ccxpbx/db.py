@@ -132,6 +132,8 @@ DEFAULT_SETTINGS = {
     "web_ui": "1",
     "softkey_park": "1",
     "softkey_record": "1",
+    "led_incoming": "1",          # status LED flashes on incoming calls (call.offering.led)
+    "led_voicemail": "1",         # status LED flashes for new voicemail (msg.mwi.x.led)
     "site_overrides": "",         # extra Poly parameters for all phones (key=value lines)
     # --- PBX ---
     "inbound_default": "",        # default destination for unmatched DIDs

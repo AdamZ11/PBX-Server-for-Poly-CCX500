@@ -194,6 +194,10 @@ def site_params(snapshot: dict) -> dict:
         "voice.volume.persist.handsfree": "1",
     })
 
+    # --- status LED (top right). Verified on CCX500 / PolyOS 9.5.1: incoming call flashes red.
+    # The ind.pattern.* LED patterns only drive line key LEDs, which the CCX500 does not have.
+    p["call.offering.led"] = "1" if s.get("led_incoming", "1") == "1" else "0"
+
     # --- in-call soft keys (send DTMF to Asterisk features) ---
     softkeys = []
     if s.get("softkey_park") == "1":
@@ -265,6 +269,7 @@ def phone_params(snapshot: dict, phone: dict) -> dict:
             f"reg.{i}.server.1.expires": s.get("reg_expires", "600"),
             f"msg.mwi.{i}.callBackMode": "contact",
             f"msg.mwi.{i}.callBack": plan.FC_VM_OWN,
+            f"msg.mwi.{i}.led": "1" if s.get("led_voicemail", "1") == "1" else "0",
         })
         if s.get("sip_transport") == "tls":
             p[f"reg.{i}.srtp.enable"] = "1"
