@@ -124,6 +124,42 @@ def test_live_api(client):
     assert r.status_code == 303 and r.headers["location"] == "/login"
 
 
+def browser_form(html: str) -> dict:
+    """What a browser submits for the settings form: text inputs, checked boxes, selected options, textareas."""
+    import re
+    form_html = html.split('<form method="post" action="/settings">', 1)[1].split("</form>", 1)[0]
+    data = {}
+    for tag in re.findall(r"<input\b[^>]*>", form_html):
+        name = re.search(r'name="([^"]+)"', tag)
+        if not name:
+            continue
+        value = re.search(r'value="([^"]*)"', tag)
+        if 'type="checkbox"' in tag and "checked" not in tag:
+            continue
+        data[name.group(1)] = value.group(1) if value else ""
+    for name, body in re.findall(r'<select name="([^"]+)">(.*?)</select>', form_html, re.S):
+        opts = re.findall(r'<option(?: value="([^"]*)")?([^>]*)>([^<]*)</option>', body)
+        chosen = next((o for o in opts if "selected" in o[1]), opts[0])
+        data[name] = chosen[0] if chosen[0] or 'value=""' in body else chosen[2]
+    for name, body in re.findall(r'<textarea name="([^"]+)"[^>]*>(.*?)</textarea>', form_html, re.S):
+        data[name] = body
+    return data
+
+
+def test_settings_form_as_browser(client):
+    """Regression: the page has no base_profile field, so saving it used to fail."""
+    login(client)
+    form = browser_form(client.get("/settings").text)
+    assert "base_profile" not in form and "server_host" in form
+    form["site_overrides"] = "call.offering.led=1\nind.pattern.active.step.1.color=Green"
+    r = client.post("/settings", data=form, follow_redirects=False)
+    assert r.status_code == 303
+    s = db.get_settings(db.connect())
+    assert s["base_profile"] == "Generic"
+    assert "call.offering.led=1" in s["site_overrides"]
+    assert 'call.offering.led="1"' in prov(client, "/prov/ccx/site.cfg").text
+
+
 def test_settings_validation(client):
     login(client)
     form = dict(db.get_settings(db.connect()))

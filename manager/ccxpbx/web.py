@@ -743,6 +743,8 @@ async def settings_save(request: Request, conn=Depends(get_db), _=Depends(requir
     try:
         updates = {}
         for key, rule in SETTING_RULES.items():
+            if key not in form:
+                continue  # field not on the form (e.g. base_profile): keep the stored value
             value = fval(form, key)
             if not rule.match(value):
                 if key in SETTING_HELP:
