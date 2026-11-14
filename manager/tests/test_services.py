@@ -47,6 +47,23 @@ def test_server_host_mismatch(monkeypatch):
     assert services.server_host_mismatch("192.168.10.132") is None
 
 
+def test_sync_phones_only_registered(monkeypatch):
+    from ccxpbx import web
+
+    class Req:
+        session = {}
+
+    sent = []
+    monkeypatch.setattr(web.ami, "safe_call", lambda fn, default=None: ([{"Endpoint": "2001"}], None))
+    monkeypatch.setattr(web.services, "primary_endpoint", lambda conn, mac: {"aa": "2001", "bb": "2002"}[mac])
+    monkeypatch.setattr(web.services, "notify_phone", lambda conn, mac, reboot=False: sent.append(mac))
+    req = Req()
+    web.sync_phones(req, None, ["aa", "bb"])
+    assert sent == ["aa"]  # bb is not registered: it gets the config at its next boot
+    assert "1 telefon megkapta" in req.session["flash"][0][1]
+    assert "1 nem regisztrált" in req.session["flash"][0][1]
+
+
 def test_restart_dropped_connection_is_success():
     services.restart_asterisk(FakeAMI(ami.AMIError("AMI kapcsolat lezárult")))
     services.restart_asterisk(FakeAMI(None))

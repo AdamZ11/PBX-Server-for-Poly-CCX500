@@ -86,9 +86,12 @@ def fint(form, key: str, default: int, lo: int, hi: int) -> int:
         return default
 
 
-def apply_now(request: Request, conn) -> dict:
+def apply_now(request: Request, conn, sync: str | None = None) -> dict:
     """Save -> write Asterisk config and reload right away, so a phone that boots
-    a moment later already finds its extension in Asterisk."""
+    a moment later already finds its extension in Asterisk.
+
+    sync: None = phones are not affected, "all" = every phone, or one MAC address.
+    """
     db.mark_dirty(conn)
     result = services.apply_config(conn)
     if result["error"]:
@@ -96,7 +99,30 @@ def apply_now(request: Request, conn) -> dict:
                        f"({result['error']}). A 'Változások alkalmazása' gombbal újrapróbálhatod.", "warn")
     if result["restart_required"]:
         flash(request, "A SIP transport megváltozott - az Asterisk újraindítása szükséges.", "warn")
+    if sync:
+        sync_phones(request, conn, None if sync == "all" else [sync])
     return result
+
+
+def sync_phones(request: Request, conn, macs: list[str] | None = None) -> None:
+    """Send check-sync to registered phones; phones that are not registered fetch it at boot."""
+    if macs is None:
+        macs = [r["mac"] for r in conn.execute("SELECT DISTINCT mac FROM phone_lines")]
+    if not macs:
+        return
+    contacts, err = ami.safe_call(lambda a: a.contacts(), [])
+    if err:
+        return  # apply_now already reported that Asterisk is not reachable
+    registered = {c.get("Endpoint") for c in contacts}
+    done = 0
+    for mac in macs:
+        if services.primary_endpoint(conn, mac) in registered and not services.notify_phone(conn, mac):
+            done += 1
+    skipped = len(macs) - done
+    msg = f"{done} telefon megkapta az új konfigurációt (check-sync)."
+    if skipped:
+        msg += f" {skipped} nem regisztrált telefon a következő indításkor kapja meg."
+    flash(request, msg)
 
 
 def valid_dest(conn, dest: str) -> str:
@@ -307,7 +333,7 @@ async def ext_save(request: Request, conn=Depends(get_db), _=Depends(require_log
         conn.execute("INSERT INTO extensions(name, secret, vm_enabled, vm_pin, email, ring_time, record, "
                      "pickup_group, max_contacts, in_directory, page_member, ext) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                      values)
-    await run_in_threadpool(apply_now, request, conn)
+    await run_in_threadpool(apply_now, request, conn, "all")
     flash(request, f"{ext} mellék mentve.")
     return redirect("/extensions")
 
@@ -315,7 +341,7 @@ async def ext_save(request: Request, conn=Depends(get_db), _=Depends(require_log
 @router.post("/extensions/{ext}/delete")
 def ext_delete(ext: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
     conn.execute("DELETE FROM extensions WHERE ext=?", (ext,))
-    apply_now(request, conn)
+    apply_now(request, conn, "all")
     flash(request, f"{ext} mellék törölve.")
     return redirect("/extensions")
 
@@ -440,7 +466,7 @@ def phone_autokeys(mac: str, request: Request, conn=Depends(get_db), _=Depends(r
     conn.execute("DELETE FROM phone_keys WHERE mac=?", (mac,))
     conn.executemany("INSERT INTO phone_keys(mac, pos, type, value, label) VALUES (?,?,?,?,?)",
                      [(mac, pos, *k) for pos, k in enumerate(keys[: plan.MAX_KEYS], 1)])
-    apply_now(request, conn)
+    apply_now(request, conn, mac)
     flash(request, "Automatikus gombkiosztás elkészült (vonalak, park, BLF minden mellékre, park helyek).")
     return redirect(f"/phones/{mac}")
 
@@ -573,7 +599,7 @@ async def rg_save(request: Request, conn=Depends(get_db), _=Depends(require_logi
         "ON CONFLICT(num) DO UPDATE SET name=excluded.name, strategy=excluded.strategy, "
         "ring_time=excluded.ring_time, members=excluded.members, failover=excluded.failover",
         (num, name, strategy, fint(form, "ring_time", 20, 5, 300), ",".join(members), failover))
-    await run_in_threadpool(apply_now, request, conn)
+    await run_in_threadpool(apply_now, request, conn, "all")
     flash(request, f"{num} csoport mentve.")
     return redirect("/ringgroups")
 
@@ -581,7 +607,7 @@ async def rg_save(request: Request, conn=Depends(get_db), _=Depends(require_logi
 @router.post("/ringgroups/{num}/delete")
 def rg_delete(num: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
     conn.execute("DELETE FROM ring_groups WHERE num=?", (num,))
-    apply_now(request, conn)
+    apply_now(request, conn, "all")
     return redirect("/ringgroups")
 
 
@@ -673,7 +699,7 @@ async def outbound_save(request: Request, conn=Depends(get_db), _=Depends(requir
     conn.execute("INSERT INTO outbound_routes(pattern, strip, prepend, trunk) VALUES (?,?,?,?) "
                  "ON CONFLICT(pattern) DO UPDATE SET strip=excluded.strip, prepend=excluded.prepend, "
                  "trunk=excluded.trunk", (pattern, fint(form, "strip", 0, 0, 10), prepend, trunk))
-    await run_in_threadpool(apply_now, request, conn)
+    await run_in_threadpool(apply_now, request, conn, "all")
     return redirect("/trunks")
 
 
@@ -682,7 +708,7 @@ def route_delete(kind: str, rid: int, request: Request, conn=Depends(get_db), _=
     table = {"inbound": "inbound_routes", "outbound": "outbound_routes"}.get(kind)
     if table:
         conn.execute(f"DELETE FROM {table} WHERE id=?", (rid,))
-        apply_now(request, conn)
+        apply_now(request, conn, "all" if kind == "outbound" else None)
     return redirect("/trunks")
 
 
@@ -763,8 +789,8 @@ async def settings_save(request: Request, conn=Depends(get_db), _=Depends(requir
         return redirect("/settings")
     for key, value in updates.items():
         db.set_setting(conn, key, value)
-    await run_in_threadpool(apply_now, request, conn)
-    flash(request, "Beállítások mentve. Alkalmazd a változásokat, majd szinkronizáld a telefonokat.")
+    flash(request, "Beállítások mentve.")
+    await run_in_threadpool(apply_now, request, conn, "all")
     return redirect("/settings")
 
 
