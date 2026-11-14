@@ -49,6 +49,8 @@ def test_full_flow(client):
                                                    "vm_pin": "1234", "ring_time": "25", "pickup_group": "1",
                                                    "max_contacts": "1", "in_directory": "1"}, follow_redirects=False)
         assert r.status_code == 303 and r.headers["location"] == "/extensions"
+    # saving applies right away: the extension is in Asterisk before any phone boots
+    assert "exten => 2002,hint,PJSIP/2002" in (config.AST_GEN_DIR / "extensions_generated.conf").read_text()
 
     # an unknown phone appears on the dashboard after its first provisioning request
     r = prov(client, "/prov/0004f2aabbcc.cfg")
@@ -85,7 +87,7 @@ def test_full_flow(client):
     assert client.get(f"/phones/0004f2aabbcc/files/logs/{core}").content == b"core"
 
     seen = db.connect().execute("SELECT model, firmware FROM seen_devices").fetchone()
-    assert (seen["model"], seen["firmware"]) == ("CCX_500", "8.1.3.1301")
+    assert (seen["model"], seen["firmware"]) == ("CCX500", "8.1.3.1301")
 
     # apply writes the Asterisk files even when Asterisk is not running
     assert client.post("/apply", data={}, follow_redirects=False).status_code == 303
@@ -113,3 +115,13 @@ def test_settings_validation(client):
     form["server_host"] = "192.168.1.20"
     assert client.post("/settings", data=form, follow_redirects=False).status_code == 303
     assert db.get_settings(db.connect())["server_host"] == "192.168.1.20"
+
+    # special characters are fine in the phone admin password ...
+    form["phone_admin_password"] = "Adamka12345."
+    assert client.post("/settings", data=form, follow_redirects=False).status_code == 303
+    assert db.get_settings(db.connect())["phone_admin_password"] == "Adamka12345."
+    # ... and a rejected password is never echoed back in the error message
+    form["phone_admin_password"] = "has space!"
+    page = client.post("/settings", data=form).text
+    assert "has space!" not in page and "Telefon admin jelszó: 6-32 karakter" in page
+    assert db.get_settings(db.connect())["phone_admin_password"] == "Adamka12345."

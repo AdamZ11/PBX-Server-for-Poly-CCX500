@@ -2,7 +2,9 @@
 import json
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -15,6 +17,24 @@ from .services import get_db
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 templates.env.globals.update(plan=plan, KEY_TYPES=plan.KEY_TYPES)
+
+
+def localtime(value: str | None, tz_name: str = "") -> str:
+    """SQLite datetime('now') values are UTC; show them in the PBX time zone."""
+    if not value:
+        return ""
+    try:
+        dt = datetime.fromisoformat(str(value)).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return str(value)
+    try:
+        dt = dt.astimezone(ZoneInfo(tz_name)) if tz_name else dt.astimezone()
+    except (ZoneInfoNotFoundError, ValueError):
+        dt = dt.astimezone()
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+templates.env.filters["localtime"] = localtime
 
 _failed_logins: dict[str, list[float]] = {}
 
@@ -64,6 +84,19 @@ def fint(form, key: str, default: int, lo: int, hi: int) -> int:
         return max(lo, min(hi, int(fval(form, key, str(default)))))
     except ValueError:
         return default
+
+
+def apply_now(request: Request, conn) -> dict:
+    """Save -> write Asterisk config and reload right away, so a phone that boots
+    a moment later already finds its extension in Asterisk."""
+    db.mark_dirty(conn)
+    result = services.apply_config(conn)
+    if result["error"]:
+        flash(request, "Mentve, de az Asterisk frissítése nem sikerült "
+                       f"({result['error']}). A 'Változások alkalmazása' gombbal újrapróbálhatod.", "warn")
+    if result["restart_required"]:
+        flash(request, "A SIP transport megváltozott - az Asterisk újraindítása szükséges.", "warn")
+    return result
 
 
 def valid_dest(conn, dest: str) -> str:
@@ -205,7 +238,7 @@ async def ext_save(request: Request, conn=Depends(get_db), _=Depends(require_log
         conn.execute("INSERT INTO extensions(name, secret, vm_enabled, vm_pin, email, ring_time, record, "
                      "pickup_group, max_contacts, in_directory, page_member, ext) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                      values)
-    db.mark_dirty(conn)
+    await run_in_threadpool(apply_now, request, conn)
     flash(request, f"{ext} mellék mentve.")
     return redirect("/extensions")
 
@@ -213,7 +246,7 @@ async def ext_save(request: Request, conn=Depends(get_db), _=Depends(require_log
 @router.post("/extensions/{ext}/delete")
 def ext_delete(ext: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
     conn.execute("DELETE FROM extensions WHERE ext=?", (ext,))
-    db.mark_dirty(conn)
+    apply_now(request, conn)
     flash(request, f"{ext} mellék törölve.")
     return redirect("/extensions")
 
@@ -313,8 +346,14 @@ async def phone_save(request: Request, conn=Depends(get_db), _=Depends(require_l
                      [(mac, *line) for line in lines])
     conn.executemany("INSERT INTO phone_keys(mac, pos, type, value, label) VALUES (?,?,?,?,?)",
                      [(mac, *key) for key in keys])
-    db.mark_dirty(conn)
-    flash(request, "Telefon mentve. A telefon a következő szinkronizáláskor (Szinkronizálás gomb) kapja meg.")
+    await run_in_threadpool(apply_now, request, conn)
+    # Push the new config to the phone right away if it is registered
+    err = await run_in_threadpool(services.notify_phone, conn, mac, False) if not is_new else "new"
+    if err:
+        flash(request, "Telefon mentve. Ha a telefon még nem regisztrált, indítsd újra (táp ki/be), "
+                       "és letölti a vonalait.")
+    else:
+        flash(request, "Telefon mentve, a konfiguráció elküldve a telefonnak (check-sync).")
     return redirect(f"/phones/{mac}")
 
 
@@ -332,7 +371,7 @@ def phone_autokeys(mac: str, request: Request, conn=Depends(get_db), _=Depends(r
     conn.execute("DELETE FROM phone_keys WHERE mac=?", (mac,))
     conn.executemany("INSERT INTO phone_keys(mac, pos, type, value, label) VALUES (?,?,?,?,?)",
                      [(mac, pos, *k) for pos, k in enumerate(keys[: plan.MAX_KEYS], 1)])
-    db.mark_dirty(conn)
+    apply_now(request, conn)
     flash(request, "Automatikus gombkiosztás elkészült (vonalak, park, BLF minden mellékre, park helyek).")
     return redirect(f"/phones/{mac}")
 
@@ -340,7 +379,7 @@ def phone_autokeys(mac: str, request: Request, conn=Depends(get_db), _=Depends(r
 @router.post("/phones/{mac}/delete")
 def phone_delete(mac: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
     conn.execute("DELETE FROM phones WHERE mac=?", (mac,))
-    db.mark_dirty(conn)
+    apply_now(request, conn)
     flash(request, "Telefon törölve.")
     return redirect("/phones")
 
@@ -465,7 +504,7 @@ async def rg_save(request: Request, conn=Depends(get_db), _=Depends(require_logi
         "ON CONFLICT(num) DO UPDATE SET name=excluded.name, strategy=excluded.strategy, "
         "ring_time=excluded.ring_time, members=excluded.members, failover=excluded.failover",
         (num, name, strategy, fint(form, "ring_time", 20, 5, 300), ",".join(members), failover))
-    db.mark_dirty(conn)
+    await run_in_threadpool(apply_now, request, conn)
     flash(request, f"{num} csoport mentve.")
     return redirect("/ringgroups")
 
@@ -473,7 +512,7 @@ async def rg_save(request: Request, conn=Depends(get_db), _=Depends(require_logi
 @router.post("/ringgroups/{num}/delete")
 def rg_delete(num: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
     conn.execute("DELETE FROM ring_groups WHERE num=?", (num,))
-    db.mark_dirty(conn)
+    apply_now(request, conn)
     return redirect("/ringgroups")
 
 
@@ -515,7 +554,7 @@ async def trunk_save(request: Request, conn=Depends(get_db), _=Depends(require_l
         "codecs=excluded.codecs",
         (name, host, fint(form, "port", 5060, 1, 65535), fields[0], password, fbool(form, "register"),
          fields[1], fields[2], fields[3], codecs or "alaw,ulaw"))
-    db.mark_dirty(conn)
+    await run_in_threadpool(apply_now, request, conn)
     flash(request, f"{name} trönk mentve.")
     return redirect("/trunks")
 
@@ -523,7 +562,7 @@ async def trunk_save(request: Request, conn=Depends(get_db), _=Depends(require_l
 @router.post("/trunks/{name}/delete")
 def trunk_delete(name: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
     conn.execute("DELETE FROM trunks WHERE name=?", (name,))
-    db.mark_dirty(conn)
+    apply_now(request, conn)
     return redirect("/trunks")
 
 
@@ -542,7 +581,7 @@ async def inbound_save(request: Request, conn=Depends(get_db), _=Depends(require
         return redirect("/trunks")
     conn.execute("INSERT INTO inbound_routes(did, destination) VALUES (?,?) "
                  "ON CONFLICT(did) DO UPDATE SET destination=excluded.destination", (did, dest))
-    db.mark_dirty(conn)
+    await run_in_threadpool(apply_now, request, conn)
     return redirect("/trunks")
 
 
@@ -565,7 +604,7 @@ async def outbound_save(request: Request, conn=Depends(get_db), _=Depends(requir
     conn.execute("INSERT INTO outbound_routes(pattern, strip, prepend, trunk) VALUES (?,?,?,?) "
                  "ON CONFLICT(pattern) DO UPDATE SET strip=excluded.strip, prepend=excluded.prepend, "
                  "trunk=excluded.trunk", (pattern, fint(form, "strip", 0, 0, 10), prepend, trunk))
-    db.mark_dirty(conn)
+    await run_in_threadpool(apply_now, request, conn)
     return redirect("/trunks")
 
 
@@ -574,7 +613,7 @@ def route_delete(kind: str, rid: int, request: Request, conn=Depends(get_db), _=
     table = {"inbound": "inbound_routes", "outbound": "outbound_routes"}.get(kind)
     if table:
         conn.execute(f"DELETE FROM {table} WHERE id=?", (rid,))
-        db.mark_dirty(conn)
+        apply_now(request, conn)
     return redirect("/trunks")
 
 
@@ -593,10 +632,12 @@ SETTING_RULES = {
     "timezone_name": re.compile(r"^[A-Za-z_]+(/[A-Za-z_+\-]+)*$"),
     "prov_auth": re.compile(r"^(none|basic|digest)$"),
     "prov_user": re.compile(r"^[A-Za-z0-9._-]{3,32}$"),
-    "prov_password": re.compile(r"^[A-Za-z0-9]{8,64}$"),
+    # goes into the DHCP provisioning URL (http://user:pass@host/prov): URL-safe characters only
+    "prov_password": re.compile(r"^[A-Za-z0-9._~-]{8,64}$"),
     "prov_polling_time": re.compile(r"^[0-2][0-9]:[0-5][0-9]$"),
-    "phone_admin_password": re.compile(r"^[A-Za-z0-9]{6,32}$"),
-    "phone_user_password": re.compile(r"^[A-Za-z0-9]{0,32}$"),
+    # printable ASCII without spaces, quotes, backslash and backtick
+    "phone_admin_password": re.compile(r"^[A-Za-z0-9!#$%&()*+,./:;<=>?@\[\]^_{|}~-]{6,32}$"),
+    "phone_user_password": re.compile(r"^[A-Za-z0-9!#$%&()*+,./:;<=>?@\[\]^_{|}~-]{0,32}$"),
     "base_profile": re.compile(r"^(Generic)$"),
     "ntp_server": plan.HOST_RE,
     "gmt_offset": re.compile(r"^-?[0-9]{1,5}$"),
@@ -606,6 +647,12 @@ SETTING_RULES = {
     "paging_address": re.compile(r"^2(2[4-9]|3[0-9])\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$"),
     "paging_port": re.compile(r"^[0-9]{2,5}$"),
     "firmware_file": re.compile(r"^[A-Za-z0-9._-]{0,128}$"),
+}
+# Readable rules for fields whose value must never be echoed back (passwords)
+SETTING_HELP = {
+    "prov_password": "Provisioning jelszó: 8-64 karakter, betű, szám és . _ ~ - (a DHCP URL-be kerül)",
+    "phone_admin_password": "Telefon admin jelszó: 6-32 karakter, szóköz, idézőjel, \\ és ` nélkül",
+    "phone_user_password": "Telefon user jelszó: legfeljebb 32 karakter, szóköz, idézőjel, \\ és ` nélkül",
 }
 SETTING_BOOLS = ("lock_prov_server", "prov_polling", "clock_24h", "paging_enabled", "intercom_unmute",
                  "rest_api", "web_ui", "softkey_park", "softkey_record")
@@ -629,6 +676,8 @@ async def settings_save(request: Request, conn=Depends(get_db), _=Depends(requir
         for key, rule in SETTING_RULES.items():
             value = fval(form, key)
             if not rule.match(value):
+                if key in SETTING_HELP:
+                    raise plan.ValidationError(f"{SETTING_HELP[key]} (a megadott érték nem lett elmentve)")
                 raise plan.ValidationError(f"Érvénytelen érték: {key} = {value!r}")
             updates[key] = value
         for key in SETTING_BOOLS:
@@ -643,7 +692,7 @@ async def settings_save(request: Request, conn=Depends(get_db), _=Depends(requir
         return redirect("/settings")
     for key, value in updates.items():
         db.set_setting(conn, key, value)
-    db.mark_dirty(conn)
+    await run_in_threadpool(apply_now, request, conn)
     flash(request, "Beállítások mentve. Alkalmazd a változásokat, majd szinkronizáld a telefonokat.")
     return redirect("/settings")
 

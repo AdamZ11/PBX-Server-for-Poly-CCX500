@@ -4,7 +4,10 @@ import socket
 
 from . import ami, asterisk_gen, config, db
 
-UA_RE = re.compile(r"Polycom[A-Za-z]*-([A-Za-z0-9_]+)-UA/([0-9][0-9.]*)")
+# UC Software:  "FileTransport PolycomCCX-CCX_500-UA/8.1.3.1301"
+# PolyOS 9.x and upload names: "...-9.5.1.0067-CCX500-core..." - so match loosely.
+MODEL_RE = re.compile(r"(?<![A-Za-z])(CCX|VVX|Trio|Edge)[ _-]?([0-9]{2,4}[A-Za-z]?)", re.I)
+VERSION_RE = re.compile(r"(?<![0-9.])([0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{3,5})(?![0-9])")
 
 
 def get_db():
@@ -18,12 +21,18 @@ def get_db():
 
 
 def parse_user_agent(ua: str) -> tuple[str, str]:
-    m = UA_RE.search(ua or "")
-    return (m.group(1), m.group(2)) if m else ("", "")
+    """(model, firmware) such as ("CCX500", "9.5.1.0130"); empty strings when unknown."""
+    m = MODEL_RE.search(ua or "")
+    v = VERSION_RE.search(ua or "")
+    model = f"{m.group(1).upper() if m.group(1).lower() != 'trio' else 'Trio'}{m.group(2).upper()}" if m else ""
+    return model, (v.group(1) if v else "")
 
 
 def record_seen(conn, mac: str, ip: str, ua: str, filename: str) -> None:
     model, fw = parse_user_agent(ua)
+    if not model or not fw:
+        f_model, f_fw = parse_user_agent(filename)
+        model, fw = model or f_model, fw or f_fw
     conn.execute(
         "INSERT INTO seen_devices(mac, ip, user_agent, model, firmware, last_file) VALUES (?,?,?,?,?,?) "
         "ON CONFLICT(mac) DO UPDATE SET ip=excluded.ip, user_agent=excluded.user_agent, "

@@ -22,7 +22,7 @@
     <tr><th>MAC</th><th>IP</th><th>Modell</th><th>Firmware</th><th>Utoljára</th><th></th></tr>
     {% for d in unknown %}
     <tr><td class="mono">{{ d.mac }}</td><td>{{ d.ip }}</td><td>{{ d.model }}</td><td>{{ d.firmware }}</td>
-        <td>{{ d.last_seen }}</td><td><a class="btn" href="/phones/new?mac={{ d.mac }}">Felvétel</a></td></tr>
+        <td>{{ d.last_seen|localtime(settings.timezone_name) }}</td><td><a class="btn" href="/phones/new?mac={{ d.mac }}">Felvétel</a></td></tr>
     {% endfor %}
   </table>
 </section>

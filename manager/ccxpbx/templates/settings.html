@@ -33,7 +33,7 @@
      <code>http://{{ settings.prov_user }}:{{ settings.prov_password }}@{{ prov_url[7:] }}</code></p>
   {{ select('prov_auth', 'Hitelesítés', [('digest','HTTP Digest (ajánlott)'),('basic','HTTP Basic'),('none','Nincs (csak teszthez!)')]) }}
   {{ text('prov_user', 'Provisioning felhasználó') }}
-  {{ text('prov_password', 'Provisioning jelszó') }}
+  {{ text('prov_password', 'Provisioning jelszó', '8-64 karakter: betű, szám és . _ ~ -') }}
   {{ check('lock_prov_server', 'Provisioning szerver rögzítése a telefonban (device.prov.*)') }}
   {{ check('prov_polling', 'Éjszakai automatikus konfig ellenőrzés') }}
   {{ text('prov_polling_time', 'Ellenőrzés időpontja (ÓÓ:PP)') }}
@@ -44,7 +44,7 @@
 
 <section class="card grid">
   <h2 class="full">Telefon alapbeállítások (minden CCX500)</h2>
-  {{ text('phone_admin_password', 'Telefon admin jelszó', 'Webfelület + REST API; ezzel kezeli a szerver a telefont') }}
+  {{ text('phone_admin_password', 'Telefon admin jelszó', 'Webfelület + REST API; 6-32 karakter, speciális karakter is lehet (szóköz, idézőjel, \\ és ` nem). Módosítás után szinkronizáld a telefonokat.') }}
   {{ text('phone_user_password', 'Telefon user jelszó', 'üres = nem változtat') }}
   {{ text('ntp_server', 'NTP szerver') }}
   {{ text('gmt_offset', 'GMT eltolás (mp)', 'Magyarország: 3600') }}

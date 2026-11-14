@@ -13,7 +13,7 @@
     <dt>IP cím</dt><dd>{{ ip or '-' }} {% if ip %}<a href="https://{{ ip }}" target="_blank" rel="noopener">telefon webfelülete ↗</a>{% endif %}</dd>
     <dt>Modell / firmware</dt><dd>{{ seen.model if seen }} {{ seen.firmware if seen }}</dd>
     <dt>User-Agent</dt><dd class="small">{{ seen.user_agent if seen }}</dd>
-    <dt>Utolsó provisioning</dt><dd>{{ seen.last_seen if seen }} ({{ seen.last_file if seen }})</dd>
+    <dt>Utolsó provisioning</dt><dd>{{ seen.last_seen|localtime(settings.timezone_name) if seen }} ({{ seen.last_file if seen }})</dd>
   </dl>
   <div class="row wrap">
     <form method="post" action="/phones/{{ phone.mac }}/action/resync"><button>Konfig szinkronizálás</button></form>

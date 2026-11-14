@@ -19,7 +19,7 @@
         {% else %}<span class="pill err">offline</span>{% endif %}</td>
     <td>{{ p.seen.ip if p.seen }}</td>
     <td>{{ p.seen.firmware if p.seen }}</td>
-    <td class="small">{{ p.seen.last_seen if p.seen }}</td>
+    <td class="small">{{ p.seen.last_seen|localtime(settings.timezone_name) if p.seen }}</td>
   </tr>
   {% else %}
   <tr><td colspan="7" class="muted">Még nincs telefon. Csatlakoztasd a CCX500-at (DHCP 66/160 opció vagy kézi provisioning szerver),

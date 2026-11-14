@@ -66,6 +66,8 @@ fájlt átmásolni, majd a telepítőt lefuttatni.
 
 ## Telefonok bekötése (zero-touch)
 
+0. **Adj a szervernek fix IP-t** (DHCP-foglalás a routeren). A telefonok ezt a címet kapják meg SIP és provisioning
+   szervernek, és ha a cím később megváltozik, elvesztik a kapcsolatot.
 1. **DHCP opció 160** (a Poly ezt nézi először) vagy **66** a routeren/DHCP szerveren, értéke a `PROV_URL`:
    `http://ccxprov:<jelszó>@192.168.1.10/prov`. Példa dnsmasq-hoz: [install/extra/dnsmasq-ccxpbx.conf](install/extra/dnsmasq-ccxpbx.conf).
    Kézzel: a telefonon *Beállítások → Speciális → Adminisztráció → Hálózati konfiguráció → Provisioning szerver*,
@@ -73,8 +75,11 @@ fájlt átmásolni, majd a telepítőt lefuttatni.
 2. Gyári állapotú CCX500 esetén: ha a telefon Teams/Zoom módban indul, az első induláskor válaszd az
    **OpenSIP / Generic** alapprofilt (vagy a `device.baseProfile=Generic` – ezt a szerver is beállítja).
 3. A telefon letölti a konfigurációt, és megjelenik az **Áttekintés → Új, még fel nem vett telefonok** listában.
-   Nyomd meg a *Felvétel* gombot, rendelj hozzá mellékeket, majd **Változások alkalmazása**. Ha
-   „telefonok szinkronizálása is” be van pipálva, a telefon azonnal frissül (SIP `check-sync`).
+   Nyomd meg a *Felvétel* gombot, és rendelj hozzá mellékeket. Mentéskor a szerver azonnal frissíti az Asteriskot.
+   A még nem regisztrált telefont ezután indítsd újra (táp ki/be), és letölti a vonalait; a már regisztrált
+   telefonok a mentéskor automatikusan megkapják a változást (SIP `check-sync`).
+4. **A telefon webfelületén ne ments semmit kézzel**: az ottani módosítások felülírják a szervert. Ha egy telefon
+   nem veszi át a szerver beállítását, lásd [docs/CCX500.md – Tipikus hibák](docs/CCX500.md#tipikus-hibák).
 
 ## Funkciók és használatuk
 
