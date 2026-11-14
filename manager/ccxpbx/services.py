@@ -39,9 +39,6 @@ def apply_config(conn) -> dict:
     files = asterisk_gen.generate(snap)
     changed = asterisk_gen.write_files(files)
     result = {"changed": changed, "reloaded": [], "error": None, "restart_required": False}
-    if asterisk_gen.TRANSPORT_FILE in changed:
-        result["restart_required"] = True
-        db.set_setting(conn, "restart_required", "1")
 
     def reload(a):
         done = []
@@ -58,9 +55,23 @@ def apply_config(conn) -> dict:
 
     if changed:
         result["reloaded"], result["error"] = ami.safe_call(reload, [])
+    # Transports are only read at startup. If Asterisk is not running (e.g. during
+    # installation) it will pick them up when it starts, so no restart is needed.
+    if asterisk_gen.TRANSPORT_FILE in changed and not result["error"]:
+        result["restart_required"] = True
+        db.set_setting(conn, "restart_required", "1")
     if not result["error"]:
         db.set_setting(conn, "dirty", "0")
     return result
+
+
+def restart_asterisk(a) -> None:
+    """Asterisk drops the AMI connection when it restarts - that means success."""
+    try:
+        a.command("core restart gracefully")
+    except ami.AMIError as exc:
+        if "lezárult" not in str(exc) and "olvasási hiba" not in str(exc):
+            raise
 
 
 def primary_endpoint(conn, mac: str) -> str | None:

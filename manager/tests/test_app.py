@@ -85,6 +85,8 @@ def test_full_flow(client):
     # apply writes the Asterisk files even when Asterisk is not running
     assert client.post("/apply", data={}, follow_redirects=False).status_code == 303
     assert "PJSIP/2001" in (config.AST_GEN_DIR / "extensions_generated.conf").read_text()
+    # Asterisk not running -> it reads the new transports at start, no restart banner
+    assert db.get_settings(db.connect())["restart_required"] == "0"
 
     r = client.post("/phones/0004f2aabbcc/autokeys", follow_redirects=False)
     assert r.status_code == 303

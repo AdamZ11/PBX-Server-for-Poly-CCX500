@@ -12,7 +12,8 @@ RuntimeDirectoryMode=0775
 ExecStart=/usr/sbin/asterisk -f -C /etc/asterisk/asterisk.conf
 ExecReload=/usr/sbin/asterisk -rx 'core reload'
 ExecStop=/usr/sbin/asterisk -rx 'core stop gracefully'
-Restart=on-failure
+# "always": also comes back if "core restart" from the web UI makes the process exit
+Restart=always
 RestartSec=5
 LimitNOFILE=16384
 AmbientCapabilities=CAP_NET_BIND_SERVICE CAP_SYS_NICE

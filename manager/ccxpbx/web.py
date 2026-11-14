@@ -710,12 +710,13 @@ async def resync_all(request: Request, conn=Depends(get_db), _=Depends(require_l
 
 @router.post("/restart-asterisk")
 async def restart_asterisk(request: Request, conn=Depends(get_db), _=Depends(require_login)):
-    _, err = await run_in_threadpool(ami.safe_call, lambda a: a.command("core restart gracefully"))
+    _, err = await run_in_threadpool(ami.safe_call, services.restart_asterisk)
     if err:
         flash(request, err, "err")
     else:
         db.set_setting(conn, "restart_required", "0")
-        flash(request, "Asterisk újraindul, amint nincs aktív hívás.")
+        flash(request, "Az Asterisk újraindul, amint nincs aktív hívás (néhány másodperc). "
+                       "Addig az AMI hibaüzenet normális, frissítsd az oldalt.")
     return redirect("/")
 
 
