@@ -46,14 +46,14 @@
     <label class="oh-time">Időpont: <b id="oh-time-label" class="mono"></b>
       <input type="range" min="0" max="23.75" step="0.25" id="oh-time"></label>
     {% call device("oh-screen") %}
-            <div class="ccx-top"><span class="ccx-menu" aria-hidden="true"><i></i><i></i><i></i></span><span></span><span></span></div>
+            <div class="ccx-top"><span class="ccx-menu" aria-hidden="true"><i></i><i></i><i></i></span></div>
             <div class="ccx-clock"><div id="oh-clock"></div><div id="oh-date"></div></div>
             <div class="ccx-apps">
-              {% for label in ['Place a Call', 'Redial', 'Messages', 'Contacts', 'DND', 'Settings'] %}
+              {% for label in ['Place a Call', 'Redial', 'Messages', 'Contacts', 'Recent Calls', 'DND'] %}
               <div class="ccx-app"><span class="ccx-circle"></span><span class="ccx-cap">{{ label }}</span></div>
               {% endfor %}
             </div>
-            <div class="ccx-dock"></div>
+            <div class="ccx-dots"><button type="button" class="on" tabindex="-1"></button><button type="button" tabindex="-1"></button></div>
             <div class="ccx-nav"><span>&#8592;</span><span class="ccx-home"></span></div>
             <div class="ccx-offhours" id="oh-overlay"><b>Off Hours</b><span>Koppints a felébresztéshez</span></div>
     {% endcall %}

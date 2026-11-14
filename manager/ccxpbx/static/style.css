@@ -244,49 +244,75 @@ details.raw pre { margin-top: 12px; }
 .ccx-hd { position: absolute; left: 0; right: 0; bottom: 4%; text-align: center; font-size: 2.2cqw; color: #6b737e; letter-spacing: 0.02em; }
 .ccx-cord { position: absolute; left: -2%; top: 77.5%; width: 30%; height: 22%; z-index: 1; overflow: visible; }
 
-/* screen: 720x1280 shown at half size; cqw keeps proportions at any width */
+/* screen: PolyOS 9.5.1 home screen, measured from photos of a CCX500 (cqw = 1% of the screen width) */
 .ccx-screen { aspect-ratio: 9 / 16; overflow: hidden; display: flex; flex-direction: column; container-type: inline-size;
               background: linear-gradient(180deg, #7d8c96 0%, #4f5d68 60%, #33404a 100%) center / cover no-repeat; color: #fff;
-              font-family: Roboto, var(--ccx-font-body); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
-.ccx-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 3cqw 4cqw; font-size: 3.4cqw; }
-.ccx-top > span:nth-child(2) { opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ccx-menu { display: inline-flex; flex-direction: column; gap: 1.1cqw; width: 6cqw; }
-.ccx-menu i { display: block; height: 0.7cqw; border-radius: 1px; background: #fff; }
-.ccx-clock { text-align: center; padding: 2cqw 0 5cqw; }
-.ccx-clock div:first-child { font-size: 11.5cqw; font-weight: 300; letter-spacing: 0.01em; line-height: 1.1; }
-.ccx-clock div:last-child { font-size: 4cqw; opacity: 0.95; }
-.ccx-apps { display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 5cqw; padding: 0 5cqw; align-content: start; min-height: 64cqw; }
-.ccx-app, .ccx-key { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1.8cqw; min-height: 0; padding: 0; border: 0;
-                     background: none; color: #fff; font: inherit; font-weight: 400; cursor: default; }
+              font-family: Roboto, "Segoe UI", var(--ccx-font-body); text-shadow: 0 0.3cqw 0.8cqw rgba(0, 0, 0, 0.45); }
+.ccx-top { display: flex; align-items: center; padding: 4cqw 5cqw 0; min-height: 9cqw; font-size: 3.4cqw; }
+.ccx-menu { display: inline-flex; flex-direction: column; gap: 1.1cqw; width: 7.5cqw; }
+.ccx-menu i { display: block; height: 0.9cqw; border-radius: 0.4cqw; background: #f2f4f6; }
+.ccx-clock { text-align: center; padding: 6cqw 0 0; }
+.ccx-clock div:first-child { font-size: 12.5cqw; font-weight: 500; letter-spacing: 0.01em; line-height: 1.05; }
+.ccx-clock div:last-child { font-size: 4.6cqw; font-weight: 500; margin-top: 1cqw; }
+.ccx-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.ccx-apps { display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 6cqw; padding: 13cqw 4cqw 0; align-content: start; }
+.ccx-app, .ccx-key { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2cqw; min-height: 0; padding: 0;
+                     border: 0; background: none; color: #fff; font: inherit; font-weight: 500; cursor: default; }
 .ccx-app:hover, .ccx-key:hover { background: none; }
-.ccx-circle { display: flex; align-items: center; justify-content: center; width: 18cqw; height: 18cqw; border-radius: 50%;
-              background: rgba(255, 255, 255, 0.28); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
-.ccx-circle svg { width: 46%; height: 46%; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
-.ccx-circle.mini { width: 32px; height: 32px; background: var(--ccx-ink); color: #fff; }
+.ccx-circle { position: relative; display: flex; align-items: center; justify-content: center; width: 18.4cqw; height: 18.4cqw; border-radius: 50%;
+              background: rgba(214, 220, 226, 0.62); box-shadow: 0 0.4cqw 1cqw rgba(0, 0, 0, 0.18); color: #fff; }
+.ccx-circle svg { width: 44%; height: 44%; filter: drop-shadow(0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.25)); }
+.ccx-circle.mini { width: 32px; height: 32px; background: var(--ccx-ink); color: #fff; box-shadow: none; }
 .ccx-circle.mini svg { width: 16px; height: 16px; }
 .ccx-p { font-weight: 700; font-size: 6cqw; }
 .ccx-circle.mini .ccx-p { font-size: 14px; }
-.ccx-cap { font-size: 3.5cqw; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ccx-dots { display: flex; justify-content: center; gap: 2cqw; min-height: 3cqw; margin: 3cqw 0; }
-.ccx-dots button { width: 2cqw; height: 2cqw; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.45); }
-.ccx-dots button.on { background: #fff; }
-.ccx-dots.small { margin: 1cqw 0 2cqw; }
-.ccx-dock { flex: 1 1 auto; display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 3cqw; padding: 0 3cqw; align-content: end; }
-.ccx-key .ccx-circle { width: 13cqw; height: 13cqw; }
-.ccx-key .ccx-cap { font-size: 3.2cqw; max-width: 22cqw; }
-.ccx-key.t-unassigned .ccx-circle { background: transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
-.ccx-key.st-free .ccx-circle { box-shadow: inset 0 0 0 0.9cqw #2bd17a; }
-.ccx-key.st-busy .ccx-circle { box-shadow: inset 0 0 0 0.9cqw #ff4d42; background: rgba(179, 38, 30, 0.45); }
-.ccx-key.st-ring .ccx-circle { box-shadow: inset 0 0 0 0.9cqw #FF8A1F; background: rgba(255, 138, 31, 0.4); }
-.ccx-key.st-park .ccx-circle { box-shadow: inset 0 0 0 0.6cqw rgba(255, 138, 31, 0.8); }
-.ccx-nav { display: flex; justify-content: center; align-items: center; gap: 22cqw; height: 11cqw; background: rgba(20, 24, 30, 0.82); font-size: 6cqw; }
-.ccx-home { display: block; width: 5cqw; height: 4.4cqw; margin-top: 1.6cqw; border: 0.6cqw solid #fff; border-top: 0; position: relative; }
-.ccx-home::before { content: ""; position: absolute; left: 0.1cqw; top: -2.4cqw; width: 3.6cqw; height: 3.6cqw; border-left: 0.6cqw solid #fff;
-                    border-top: 0.6cqw solid #fff; transform: rotate(45deg); }
+.ccx-cap { display: flex; flex-direction: column; align-items: center; font-size: 4.1cqw; line-height: 1.2; max-width: 100%; }
+.ccx-cap b, .ccx-cap small { max-width: 30cqw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.ccx-cap small { font-size: 3.7cqw; }
+.ccx-dots { display: flex; justify-content: center; gap: 3cqw; margin: auto 0 0; padding: 4cqw 0 3cqw; }
+.ccx-dots button { width: 2.6cqw; height: 2.6cqw; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: rgba(214, 228, 245, 0.55); cursor: pointer; }
+.ccx-dots button.on { background: #e6eef8; box-shadow: 0 0 0 0.4cqw rgba(255, 255, 255, 0.15); }
+.page-0 .ccx-dots { margin-top: 9cqw; padding-bottom: 0; }
+
+/* page 1: two keys at the bottom, the first on the left, the second on the right */
+.ccx-dock { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); align-items: start; margin-top: auto; padding: 4cqw 4cqw 2cqw; }
+.ccx-dock .ccx-key .ccx-circle { width: 12.6cqw; height: 12.6cqw; }
+.ccx-dock .ccx-cap { font-size: 3.7cqw; }
+.ccx-more { position: absolute; right: 0.5cqw; top: 7cqw; min-height: 0; padding: 0 1cqw; border: 0; background: none; color: #dfe5ea; font-size: 6cqw; line-height: 1; cursor: pointer; }
+.ccx-more:hover { background: none; }
+
+/* page 2: every key as a list */
+.ccx-list { display: flex; flex-direction: column; gap: 4cqw; padding: 9cqw 5cqw 2cqw; overflow-y: auto; scrollbar-width: none; min-height: 0; flex: 0 1 auto; }
+.ccx-list::-webkit-scrollbar { display: none; }
+.ccx-key.ccx-row { flex: 0 0 auto; flex-direction: row; justify-content: flex-start; gap: 5cqw; width: 100%; text-align: left; }
+.ccx-row .ccx-circle { width: 11.5cqw; height: 11.5cqw; flex: 0 0 auto; }
+.ccx-row .ccx-cap { align-items: flex-start; font-size: 4.6cqw; flex: 1 1 auto; min-width: 0; }
+.ccx-row .ccx-cap b, .ccx-row .ccx-cap small { max-width: 100%; }
+.ccx-row .ccx-cap small { font-size: 4cqw; }
+.ccx-info { flex: 0 0 auto; width: 7cqw; height: 7cqw; border: 0.5cqw solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font: 600 4cqw/1 Georgia, serif; margin-right: 6cqw; }
+.ccx-empty { text-align: center; opacity: 0.8; }
+
+/* key looks: line = grey with a green dot when registered, BLF = white with a dark person, state as a ring */
+.ccx-key.t-line .ccx-circle { background: rgba(200, 207, 214, 0.7); }
+.ccx-reg { position: absolute; right: 18%; top: 18%; width: 22%; height: 22%; border-radius: 50%; background: #39d353; box-shadow: 0 0 0 0.3cqw rgba(0, 0, 0, 0.25); }
+.ccx-key.t-blf .ccx-circle, .ccx-key.t-speeddial .ccx-circle { background: #f4f6f8; color: #2b3138; }
+.ccx-key.t-blf .ccx-circle svg { filter: none; }
+.ccx-key.t-blf.st-off .ccx-circle { background: rgba(214, 220, 226, 0.45); color: #fff; }
+.ccx-key.t-blf.st-busy .ccx-circle { box-shadow: 0 0 0 0.9cqw #e5483e; }
+.ccx-key.t-blf.st-ring .ccx-circle { box-shadow: 0 0 0 0.9cqw #FF8A1F; }
+.ccx-key.t-blf.st-park .ccx-circle { box-shadow: 0 0 0 0.6cqw rgba(255, 138, 31, 0.8); }
+.ccx-key.t-park .ccx-circle { background: #f4f6f8; color: #2b3138; }
+.ccx-key.t-unassigned .ccx-circle { background: transparent; box-shadow: inset 0 0 0 0.4cqw rgba(255, 255, 255, 0.5); }
+
+.ccx-nav { display: flex; justify-content: center; align-items: center; gap: 22cqw; height: 12cqw; padding-bottom: 2cqw; font-size: 9cqw; color: #e7ebef; }
+.ccx-home { display: block; width: 6cqw; height: 5cqw; margin-top: 2cqw; border: 0.8cqw solid #e7ebef; border-top: 0; position: relative; }
+.ccx-home::before { content: ""; position: absolute; left: 0.2cqw; top: -2.8cqw; width: 4.2cqw; height: 4.2cqw; border-left: 0.8cqw solid #e7ebef;
+                    border-top: 0.8cqw solid #e7ebef; transform: rotate(45deg); }
 
 /* edit mode affordances */
 .ccx-device.editing .ccx-app, .ccx-device.editing .ccx-key { cursor: pointer; }
-.ccx-device.editing .ccx-app:hover .ccx-circle, .ccx-device.editing .ccx-key:hover .ccx-circle { background: rgba(255, 255, 255, 0.42); }
+.ccx-device.editing .ccx-app:hover .ccx-circle, .ccx-device.editing .ccx-key:hover .ccx-circle { filter: brightness(1.12); outline: 0.5cqw solid rgba(255, 255, 255, 0.6); outline-offset: 0.6cqw; }
 .ccx-app.off { opacity: 0.38; }
 .ccx-app.off .ccx-circle { background: transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6); }
 .ccx-badge { position: absolute; top: -1cqw; right: 6cqw; padding: 0.3cqw 1.6cqw; border-radius: 99px; background: #0E1116; font-size: 2.6cqw; }
@@ -299,7 +325,9 @@ details.raw pre { margin-top: 12px; }
 .ccx-toast { position: absolute; left: 6%; right: 6%; bottom: 14cqw; z-index: 6; padding: 3cqw 4cqw; border-radius: 3cqw;
              background: rgba(14, 17, 22, 0.92); font-size: 3.4cqw; line-height: 1.35; text-align: center; text-shadow: none; }
 table.verify { width: 100%; font-size: 13px; margin: 8px 0; }
-table.verify td.ok { color: #146C3B; } table.verify td.bad { color: #8E1E17; font-weight: 600; } table.verify td.unknown { color: #7A3E00; }
+table.verify td.ok { color: #146C3B; }
+.verify-raw summary { cursor: pointer; font-size: 13px; margin-top: 8px; }
+.verify-raw pre { white-space: pre-wrap; word-break: break-all; background: var(--ccx-paper); padding: 8px; border-radius: 8px; max-height: 220px; overflow: auto; } table.verify td.bad { color: #8E1E17; font-weight: 600; } table.verify td.unknown { color: #7A3E00; }
 @media (max-width: 860px) { .ccx-inspector { position: static; max-width: none; } }
 
 /* ---------- office hours / Off Hours editor ---------- */

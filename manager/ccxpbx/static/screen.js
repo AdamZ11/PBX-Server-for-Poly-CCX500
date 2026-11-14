@@ -5,8 +5,6 @@
   const data = JSON.parse(document.getElementById("editor-data").textContent);
   const TYPES = JSON.parse(document.getElementById("key-types").textContent);
   const SHORT = { line: "Vonal", blf: "BLF", park: "Park", speeddial: "Gyorshívó", unassigned: "Üres" };
-  const APPS_PER_PAGE = 6;
-  const DOCK_PER_PAGE = 8;
   const $ = (id) => document.getElementById(id);
   const el = (tag, attrs, ...kids) => {
     const n = document.createElement(tag);
@@ -34,6 +32,7 @@
     forward: P(PHONE + "M14 3h3V0l5 4.5L17 9V6h-3z"),
     directories: P("M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm1 4v2h10V6zm0 4v2h10v-2zm0 4v2h6v-2z"),
     application: P("M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z"),
+    recentCalls: P("M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-1 5v6l5 3 1-1.6-4-2.4V7z"),
     line: P(PHONE),
     blf: P("M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c4.4 0 8 2 8 4.5V20H4v-1.5C4 16 7.6 14 12 14z"),
     park: '<span class="ccx-p">P</span>',
@@ -48,21 +47,29 @@
   const hidden = new Set(data.homeHidden);
   let mode = "edit";
   let selected = null;          // null | {key: index} | {add: true}
-  let appPage = 0, dockPage = 0;
+  let page = 0;                 // 0 = home (icons + dock), 1 = list of all keys (swipe left on the phone)
   let states = {};
   let dirty = false;
   const extName = Object.fromEntries(data.exts.map((e) => [e.ext, e.name]));
   const ownExts = new Set(data.lines.map((l) => l.ext));
   const icons = data.homeIcons.filter((i) => i.key !== "application" || data.microbrowser);
+  const toggleable = icons.filter((i) => !i.fixed);
 
   function touch() { dirty = true; $("dirty").hidden = false; }
 
   function lineOf(k) { return data.lines.find((l) => String(l.idx) === String(k.value)) || data.lines[0]; }
   function keyText(k) {
-    if (k.type === "line") { const l = lineOf(k); return k.label || (l ? l.ext : "Vonal"); }
+    if (k.type === "line") { const l = lineOf(k); return k.label || (l ? `${l.ext} ${l.name}` : "Vonal"); }
     if (k.type === "blf") return k.label || extName[k.value] || k.value || "BLF";
     if (k.type === "park") return k.label || "Park";
     if (k.type === "speeddial") return k.label || k.value || "Gyorshívó";
+    return "";
+  }
+  function keySub(k) {
+    if (k.type === "line") { const l = lineOf(k); return l ? l.ext : ""; }
+    if (k.type === "blf") return data.parkSlots.includes(k.value) ? `Park ${k.value}` : k.value;
+    if (k.type === "park") return data.parkExt;
+    if (k.type === "speeddial") return k.label ? k.value : "";
     return "";
   }
   function keyState(k) {
@@ -88,67 +95,86 @@
   function materialize() { if (!keys.length) keys = autoKeys(); }
 
   // ---------------------------------------------------------------- the phone screen
+  // Laid out after PolyOS 9.5.1 on a CCX500: page 1 = clock, six app icons, page dots and two keys at the
+  // bottom (first left, second right, "›" when there are more); page 2 = the clock and every key as a list.
+  function keyButton(k, i, cls, editing, kids) {
+    const st = keyState(k);
+    const sel = selected && selected.key === i && keys.length;
+    return el("button", {
+      type: "button", class: `${cls} t-${k.type} st-${st || "none"}${sel ? " sel" : ""}`, "data-i": i,
+      title: `${i + 1}. gomb · ${TYPES[k.type] || ""}${editing ? " · húzd az áthelyezéshez" : ""}`,
+      onpointerdown: (e) => { if (editing) startDrag(e, i); },
+      onclick: () => { if (!editing || justDragged) return; materialize(); selected = { key: i }; render(); },
+    }, kids);
+  }
+  function keyIcon(k) {
+    return el("span", { class: "ccx-circle", html: GLYPH[k.type] || "" }, k.type === "line" && keyState(k) !== "off" ? el("i", { class: "ccx-reg" }) : null);
+  }
+  function addButton(cls) {
+    return el("button", { type: "button", class: `${cls} add${selected && selected.add ? " sel" : ""}`, title: "Új gomb",
+      onclick: () => { selected = { add: true }; render(); } },
+      el("span", { class: "ccx-circle", html: GLYPH.plus }), el("span", { class: "ccx-cap" }, el("b", { text: "Új gomb" })));
+  }
+
   function renderScreen() {
     const wp = wallpaper === "" ? data.siteWallpaper : (wallpaper === "none" ? "" : wallpaper);
     $("pv-screen").style.backgroundImage = wp ? `url("/wallpapers/${encodeURIComponent(wp)}")` : "none";
-    const first = data.lines[0];
-    $("pv-status").textContent = first ? `${first.ext} ${first.name}` : "";
     const editing = mode === "edit";
     document.querySelector(".ccx-device").classList.toggle("editing", editing);
+    const body = $("pv-body");
+    body.replaceChildren();
+    body.className = `ccx-body page-${page}`;
+    const list = keys.length ? keys : autoKeys();
 
-    // app icons
-    const shown = editing ? icons : icons.filter((i) => !hidden.has(i.key));
-    const appPages = Math.max(1, Math.ceil(shown.length / APPS_PER_PAGE));
-    appPage = Math.min(appPage, appPages - 1);
-    const apps = $("pv-apps");
-    apps.replaceChildren();
-    shown.slice(appPage * APPS_PER_PAGE, (appPage + 1) * APPS_PER_PAGE).forEach((ic) => {
-      const off = hidden.has(ic.key);
-      apps.append(el("button", {
-        type: "button", class: `ccx-app${off ? " off" : ""}`,
-        title: editing ? `${ic.desc}: koppints az ${off ? "megjelenítéshez" : "elrejtéshez"}` : ic.desc,
-        "aria-pressed": editing ? String(!off) : false,
-        onclick: (e) => { if (!editing || e.currentTarget.dataset.moved) return; off ? hidden.delete(ic.key) : hidden.add(ic.key); touch(); render(); },
-        onpointerdown: (e) => { const b = e.currentTarget, x = e.clientX, y = e.clientY; delete b.dataset.moved;
-          const mv = (ev) => { if (Math.hypot(ev.clientX - x, ev.clientY - y) > 10 && !b.dataset.moved) { b.dataset.moved = "1";
+    if (page === 0) {
+      // app icons: the first six visible ones, exactly what the phone shows
+      const shown = icons.filter((i) => !hidden.has(i.key)).slice(0, data.iconsOnScreen);
+      const apps = el("div", { class: "ccx-apps" });
+      shown.forEach((ic) => apps.append(el("button", {
+        type: "button", class: `ccx-app${ic.fixed ? " fixed" : ""}`,
+        title: editing ? (ic.fixed ? `${ic.desc}: ezt a telefon mindig mutatja` : `${ic.desc}: koppints az elrejtéshez`) : ic.desc,
+        onclick: (e) => {
+          if (!editing || e.currentTarget.dataset.moved) return;
+          if (ic.fixed) { toast(`A ${ic.label} ikont a telefon mindig mutatja, nem rejthető el.`); return; }
+          hidden.add(ic.key); touch(); render();
+          toast(`${ic.label} elrejtve. Visszahozni jobb oldalt, az ikonok listájában tudod.`);
+        },
+        onpointerdown: (e) => { const btn = e.currentTarget, x = e.clientX, y = e.clientY; delete btn.dataset.moved;
+          const mv = (ev) => { if (Math.hypot(ev.clientX - x, ev.clientY - y) > 10 && !btn.dataset.moved) { btn.dataset.moved = "1";
             toast("Az ikonok sorrendjét a telefon szoftvere rögzíti, ezért nem húzhatók. Koppintással elrejtheted őket."); } };
           window.addEventListener("pointermove", mv);
           window.addEventListener("pointerup", () => window.removeEventListener("pointermove", mv), { once: true }); },
-      }, el("span", { class: "ccx-circle", html: GLYPH[ic.key] }), el("span", { class: "ccx-cap", text: ic.label }),
-         editing && off ? el("span", { class: "ccx-badge", text: "rejtve" }) : null));
-    });
-    dots($("pv-app-dots"), appPages, appPage, (p) => { appPage = p; renderScreen(); });
+      }, el("span", { class: "ccx-circle", html: GLYPH[ic.key] }), el("span", { class: "ccx-cap", text: ic.label }))));
+      body.append(apps, pageDots());
 
-    // line keys dock
-    const list = keys.length ? keys : autoKeys();
-    const tiles = list.map((k, i) => ({ k, i }));
-    if (editing && keys.length < data.maxKeys) tiles.push({ add: true });
-    const dockPages = Math.max(1, Math.ceil(tiles.length / DOCK_PER_PAGE));
-    dockPage = Math.min(dockPage, dockPages - 1);
-    const dock = $("pv-dock");
-    dock.replaceChildren();
-    tiles.slice(dockPage * DOCK_PER_PAGE, (dockPage + 1) * DOCK_PER_PAGE).forEach((t) => {
-      if (t.add) {
-        dock.append(el("button", { type: "button", class: `ccx-key add${selected && selected.add ? " sel" : ""}`, title: "Új gomb",
-          onclick: () => { selected = { add: true }; render(); } },
-          el("span", { class: "ccx-circle", html: GLYPH.plus }), el("span", { class: "ccx-cap", text: "Új gomb" })));
-        return;
-      }
-      const { k, i } = t;
-      const st = keyState(k);
-      const sel = selected && selected.key === i && keys.length;
-      dock.append(el("button", {
-        type: "button", class: `ccx-key t-${k.type} st-${st || "none"}${sel ? " sel" : ""}`, "data-i": i,
-        title: `${i + 1}. gomb · ${TYPES[k.type] || ""}${editing ? " · húzd az áthelyezéshez" : ""}`,
-        onpointerdown: (e) => { if (editing) startDrag(e, i); },
-        onclick: () => { if (!editing || justDragged) return; materialize(); selected = { key: i }; render(); },
-      }, el("span", { class: "ccx-circle", html: GLYPH[k.type] || "" }), el("span", { class: "ccx-cap", text: keyText(k) })));
-    });
-    dots($("pv-dock-dots"), dockPages, dockPage, (p) => { dockPage = p; renderScreen(); });
+      // bottom keys: first on the left, second on the right, "›" when there are more
+      const dock = el("div", { class: "ccx-dock" });
+      const slot = (n) => (list[n] ? keyButton(list[n], n, "ccx-key", editing, [keyIcon(list[n]),
+        el("span", { class: "ccx-cap" }, el("b", { text: keyText(list[n]) }), el("small", { text: keySub(list[n]) }))]) : el("span"));
+      dock.append(slot(0), editing && keys.length < data.maxKeys ? addButton("ccx-key") : el("span"), slot(1));
+      if (list.length > 2) dock.append(el("button", { type: "button", class: "ccx-more", title: "Többi gomb", text: "›", onclick: () => { page = 1; renderScreen(); } }));
+      body.append(dock);
+    } else {
+      const rows = el("div", { class: "ccx-list" });
+      list.forEach((k, i) => rows.append(keyButton(k, i, "ccx-key ccx-row", editing, [keyIcon(k),
+        el("span", { class: "ccx-cap" }, el("b", { text: keyText(k) || TYPES[k.type] }), el("small", { text: keySub(k) })),
+        k.type === "blf" || k.type === "speeddial" ? el("span", { class: "ccx-info", text: "i" }) : null])));
+      if (editing && keys.length < data.maxKeys) rows.append(addButton("ccx-key ccx-row"));
+      if (!list.length && !editing) rows.append(el("p", { class: "ccx-empty", text: "Nincs gomb" }));
+      body.append(rows, pageDots());
+    }
 
+    const hiddenCount = toggleable.filter((i) => hidden.has(i.key)).length;
     $("pv-note").textContent = editing
-      ? "Koppints egy ikonra az elrejtéshez, egy gombra a szerkesztéshez, húzd a gombokat az átrendezéshez."
-      : (keys.length ? `${keys.length} gomb · a pöttyök és keretek a mellékek élő állapotát mutatják` : "Automatikus kiosztás: a telefon a vonalgombokat mutatja.");
+      ? `Koppints egy ikonra az elrejtéshez, egy gombra a szerkesztéshez, húzd a gombokat az átrendezéshez. A pöttyökkel válthatsz a gomblistára.${hiddenCount ? ` Rejtett ikon: ${hiddenCount}.` : ""}`
+      : (keys.length ? `${keys.length} gomb · a keretek a mellékek élő állapotát mutatják` : "Automatikus kiosztás: a telefon a vonalgombokat mutatja.");
+  }
+
+  function pageDots() {
+    const box = el("div", { class: "ccx-dots" });
+    [0, 1].forEach((p) => box.append(el("button", { type: "button", class: p === page ? "on" : "", "aria-label": p ? "Gomblista" : "Kezdőlap",
+      onclick: () => { page = p; renderScreen(); } })));
+    return box;
   }
 
   // Drag a key over another one to move it there; works with mouse, pen and touch.
@@ -207,17 +233,11 @@
     toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
   }
 
-  function dots(box, pages, current, go) {
-    box.replaceChildren();
-    if (pages < 2) return;
-    for (let p = 0; p < pages; p++) box.append(el("button", { type: "button", class: p === current ? "on" : "", "aria-label": `${p + 1}. oldal`, onclick: () => go(p) }));
-  }
-
   function tick() {
     const d = new Date();
     const h = d.getHours(), m = String(d.getMinutes()).padStart(2, "0");
     $("pv-time").textContent = data.clock24 ? `${h}:${m}` : `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
-    $("pv-date").textContent = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
+    $("pv-date").textContent = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   }
 
   // ---------------------------------------------------------------- inspector beside the phone
@@ -234,7 +254,7 @@
     const grid = el("div", { class: "type-grid" });
     Object.keys(TYPES).forEach((t) => grid.append(el("button", { type: "button", class: "type-btn",
       onclick: () => { materialize(); keys.push({ type: t, value: defaultValue(t), label: t === "park" ? "Park" : "" });
-        selected = { key: keys.length - 1 }; dockPage = Math.floor(keys.length / DOCK_PER_PAGE); touch(); render(); focusInspector(); } },
+        selected = { key: keys.length - 1 }; if (keys.length > 2) page = 1; touch(); render(); focusInspector(); } },
       el("span", { class: "ccx-circle mini", html: GLYPH[t] || "" }), el("b", { text: SHORT[t] }), el("small", { text: TYPES[t] }))));
     box.append(grid, el("div", { class: "row" }, el("button", { type: "button", class: "secondary small", text: "Mégse", onclick: () => { selected = null; render(); } })));
   }
@@ -276,7 +296,7 @@
         oninput: (e) => { k.label = e.target.value; rerender(); } }), el("small", { text: "Üresen hagyva a telefon a fenti szürke szöveget írja ki." })));
     }
     const move = (d) => { const j = i + d; if (j < 0 || j >= keys.length) return; [keys[i], keys[j]] = [keys[j], keys[i]];
-      selected = { key: j }; dockPage = Math.floor(j / DOCK_PER_PAGE); touch(); render(); };
+      selected = { key: j }; touch(); render(); };
     box.append(el("div", { class: "row wrap" },
       el("button", { type: "button", class: "secondary small", text: "← Előre", disabled: i === 0, onclick: () => move(-1) }),
       el("button", { type: "button", class: "secondary small", text: "Hátra →", disabled: i === keys.length - 1, onclick: () => move(1) }),
@@ -303,8 +323,10 @@
     box.append(el("h3", { text: "Ikonok a kezdőképernyőn" }));
     const list = el("div", { class: "icon-toggles" });
     icons.forEach((ic) => list.append(el("label", { class: "check" },
-      el("input", { type: "checkbox", checked: !hidden.has(ic.key), onchange: (e) => { e.target.checked ? hidden.delete(ic.key) : hidden.add(ic.key); touch(); renderScreen(); } }),
-      ` ${ic.desc}`)));
+      el("input", { type: "checkbox", checked: !hidden.has(ic.key), disabled: !!ic.fixed,
+        onchange: (e) => { e.target.checked ? hidden.delete(ic.key) : hidden.add(ic.key); touch(); renderScreen(); } }),
+      ` ${ic.desc}${ic.fixed ? " (mindig látszik)" : ""}`)));
+    list.append(el("small", { class: "muted", text: `A telefon a kezdőképernyőn az első ${data.iconsOnScreen} látható ikont mutatja, a többit a ☰ menüben éred el.` }));
     if (!data.microbrowser) list.append(el("small", { class: "muted", text: "Az Alkalmazások ikon a Beállításokban kapcsolható be (CCXPBX oldal)." }));
     box.append(list, el("p", { class: "muted small", text: "Az ikonok sorrendjét és feliratát a telefon szoftvere rögzíti, ezért nem húzhatók; csak elrejteni lehet őket." }));
 
@@ -336,19 +358,21 @@
       if (d.error) { out.replaceChildren(el("p", { class: "flash err", text: d.error })); return; }
       const t = el("table", { class: "verify" }, el("tr", {}, el("th", { text: "Ikon" }), el("th", { text: "Szerver" }), el("th", { text: "Telefon" })));
       let unknown = 0, differs = 0;
-      const show = (v) => v === "0" ? "rejtett" : v === "1" ? "látható" : "alapérték";
+      const show = (v) => v === "0" ? "rejtett" : v === "1" ? "látható" : (v == null || v === "" ? "alapérték" : `„${v}”`);
       d.rows.forEach((r) => {
         const want = r.expected || "", got = r.phone;
         let cls = "ok", text = show(got);
         if (got == null) { cls = "unknown"; text = "nem ismeri"; unknown++; }
-        else if (want && want !== got) { cls = "bad"; differs++; }
+        else if (want && want !== got && (got === "0" || got === "1")) { cls = "bad"; differs++; }
+        else if (got !== "0" && got !== "1") cls = "unknown";
         t.append(el("tr", {}, el("td", { text: r.desc }), el("td", { text: show(want) }), el("td", { class: cls, text })));
       });
       const msgs = [];
       if (unknown === d.rows.length) msgs.push(["warn", "A telefon egyik homeScreen paramétert sem ismeri, vagyis ez a CCX500 firmware nem engedi elrejteni a kezdőképernyő ikonjait."]);
       else if (differs) msgs.push(["warn", "A telefon más értéket használ, mint amit a szerver küld. Valószínűleg a telefonon vagy a webfelületén tett beállítás (override) felülírja: a telefon oldalán a Telefon oldali override-ok törlése segít, vagy nem kapta meg a konfigot (Konfig szinkronizálás)."]);
       else msgs.push(["ok", "A telefon átvette a beállításokat. Ha a kijelzőn még nem látszik a változás, indítsd újra a telefon alkalmazását."]);
-      out.replaceChildren(t, ...msgs.map(([k, m]) => el("p", { class: `flash ${k}`, text: m })));
+      const rawBox = el("details", { class: "verify-raw" }, el("summary", { text: "A telefon nyers válasza" }), el("pre", { class: "mono small", text: d.raw || "" }));
+      out.replaceChildren(t, ...msgs.map(([k, m]) => el("p", { class: `flash ${k}`, text: m })), rawBox);
     } catch (_) {
       out.replaceChildren(el("p", { class: "flash err", text: "A szerver nem válaszolt." }));
     } finally { btn.disabled = false; }
@@ -374,7 +398,7 @@
     const bad = keys.findIndex((k) => (k.type === "speeddial" || k.type === "blf") && !/^[0-9*#+]{1,32}$/.test(k.value));
     if (bad >= 0) {
       e.preventDefault();
-      mode = "edit"; selected = { key: bad }; dockPage = Math.floor(bad / DOCK_PER_PAGE); render(); focusInspector();
+      mode = "edit"; selected = { key: bad }; page = bad > 1 ? 1 : page; render(); focusInspector();
       alert(`${bad + 1}. gomb: adj meg egy hívószámot.`);
       return;
     }

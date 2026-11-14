@@ -293,14 +293,16 @@ def test_home_screen_verify(client, monkeypatch):
     monkeypatch.setattr(services, "phone_ip", lambda conn, m, contacts=None: "192.0.2.10")
     seen = {}
 
-    def fake_get(ip, password, params):
+    def fake_get(ip, password, params, raw=False):
         seen["params"] = params
-        return {p: ("0" if p == "homeScreen.redial.enable" else None) for p in params}
+        values = {p: ("0" if p == "homeScreen.redial.enable" else None) for p in params}
+        return (values, {"data": values}) if raw else values
     monkeypatch.setattr(polyrest, "config_get", fake_get)
     d = client.get(f"/phones/{mac}/screen/verify").json()
     rows = {r["key"]: r for r in d["rows"]}
     assert "homeScreen.redial.enable" in seen["params"] and rows["redial"]["phone"] == "0"
     assert rows["redial"]["expected"] == "0" and rows["messages"]["phone"] is None
+    assert "recentCalls" not in rows and "homeScreen.redial.enable" in d["raw"]
 
 
 def test_polyrest_config_get_formats(monkeypatch):
@@ -309,3 +311,17 @@ def test_polyrest_config_get_formats(monkeypatch):
     assert polyrest.config_get("x", "y", ["a.b", "c.d", "e.f"]) == {"a.b": "1", "c.d": None, "e.f": None}
     monkeypatch.setattr(polyrest, "call", lambda *a, **k: {"data": [{"name": "a.b", "value": "0"}]})
     assert polyrest.config_get("x", "y", ["a.b"]) == {"a.b": "0"}
+    monkeypatch.setattr(polyrest, "call", lambda *a, **k: {"data": {"a.b": {"Value": "true", "Source": "default"}, "c.d": False}})
+    assert polyrest.config_get("x", "y", ["a.b", "c.d"]) == {"a.b": "1", "c.d": "0"}
+
+
+def test_directory_has_no_speed_dials():
+    from ccxpbx import poly
+    from ccxpbx.prov import strip_extension_speed_dials
+    xml = poly.render_directory({"extensions": [{"ext": "2001", "name": "Kiss Anna", "in_directory": 1}]})
+    assert "<ct>2001</ct>" in xml and "<sd>" not in xml
+    # a directory the phone uploaded earlier: extension contacts lose <sd>, an external contact keeps it
+    uploaded = ("<directory><item_list><item><fn>Anna</fn><ct>2001</ct><sd>1</sd></item>"
+                "<item><fn>Szerviz</fn><ct>0612345678</ct><sd>5</sd></item></item_list></directory>")
+    out = strip_extension_speed_dials(uploaded, {"2001", "2002"})
+    assert "<ct>2001</ct></item>" in out and "<sd>5</sd>" in out and "<sd>1</sd>" not in out

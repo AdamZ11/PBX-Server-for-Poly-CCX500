@@ -376,17 +376,17 @@ def phone_params(snapshot: dict, phone: dict) -> dict:
 
 def render_directory(snapshot: dict) -> str:
     out = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>', "<directory>", "  <item_list>"]
-    sd = 0
+    # No <sd> (speed dial index): PolyOS shows speed dial contacts as favourites among the line keys,
+    # which put every extension on the home screen. Keys come only from the home screen editor.
     for ext in snapshot["extensions"]:
         if not ext["in_directory"]:
             continue
-        sd += 1
         parts = ext["name"].rsplit(" ", 1)
         fn, ln = (parts[0], parts[1]) if len(parts) == 2 else (ext["name"], "")
         out.append(
             "    <item>"
             f"<fn>{escape(fn)}</fn><ln>{escape(ln)}</ln><ct>{escape(ext['ext'])}</ct>"
-            f"<sd>{sd}</sd><bw>0</bw><bb>0</bb>"
+            "<bw>0</bw><bb>0</bb>"
             "</item>"
         )
     out += ["  </item_list>", "</directory>"]

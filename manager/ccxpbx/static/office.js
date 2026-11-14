@@ -111,7 +111,8 @@
     const h = Math.floor(previewTime), m = String(Math.round((previewTime % 1) * 60)).padStart(2, "0");
     $("oh-clock").textContent = data.clock24 ? `${h}:${m}` : `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
     const day = data.days.find((d) => d.key === previewDay);
-    $("oh-date").textContent = day.name;
+    const en = { monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday", thursday: "Thursday", friday: "Friday", saturday: "Saturday", sunday: "Sunday" };
+    $("oh-date").textContent = en[day.key];
     const off = isOffHours(previewDay, previewTime);
     $("oh-screen").classList.toggle("is-off", off);
     $("oh-state").innerHTML = "";

@@ -57,6 +57,21 @@ def _seen(conn, request: Request, name: str) -> str | None:
     return mac
 
 
+_ITEM_RE = re.compile(r"<item>.*?</item>", re.S)
+_CT_RE = re.compile(r"<ct>\s*([^<]*?)\s*</ct>")
+_SD_RE = re.compile(r"\s*<sd>[^<]*</sd>")
+
+
+def strip_extension_speed_dials(xml: str, exts: set[str]) -> str:
+    """Drop <sd> from contacts that are PBX extensions. Older versions numbered every extension, and PolyOS
+    shows speed dial contacts as favourites next to the line keys. Other contacts keep their speed dial."""
+    def fix(m):
+        item = m.group(0)
+        ct = _CT_RE.search(item)
+        return _SD_RE.sub("", item) if ct and ct.group(1) in exts else item
+    return _ITEM_RE.sub(fix, xml)
+
+
 @router.api_route("/prov/{path:path}", methods=["GET", "HEAD"])
 def prov_get(path: str, request: Request, conn=Depends(get_db)):
     settings = db.get_settings(conn)
@@ -89,6 +104,9 @@ def prov_get(path: str, request: Request, conn=Depends(get_db)):
     if sub in (config.FIRMWARE_DIR, *config.UPLOAD_DIRS):
         f = config.PROV_DIR / sub / name
         if f.is_file():
+            if sub == "contacts" and lname.endswith("-directory.xml"):
+                exts = {r["ext"] for r in conn.execute("SELECT ext FROM extensions")}
+                return _xml(strip_extension_speed_dials(f.read_text(encoding="utf-8", errors="replace"), exts))
             return FileResponse(f)
     return PlainTextResponse("Not found", status_code=404)
 

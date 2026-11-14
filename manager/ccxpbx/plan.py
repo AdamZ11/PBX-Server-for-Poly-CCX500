@@ -34,13 +34,16 @@ HOME_ICONS = [
     ("redial", "Redial", "Újratárcsázás"),
     ("messages", "Messages", "Üzenetek, hangposta"),
     ("contacts", "Contacts", "Névjegyek"),
+    ("recentCalls", "Recent Calls", "Híváslista"),
     ("doNotDisturb", "DND", "Ne zavarj"),
     ("settings", "Settings", "Beállítások"),
     ("forward", "Forward", "Átirányítás"),
     ("directories", "Directories", "Telefonkönyvek"),
     ("application", "Applications", "Alkalmazások (CCXPBX oldal)"),
 ]
-HOME_ICON_KEYS = [k for k, _, _ in HOME_ICONS]
+HOME_ICON_FIXED = {"recentCalls"}   # shown by PolyOS 9.5 but no known homeScreen.* switch
+HOME_ICON_KEYS = [k for k, _, _ in HOME_ICONS if k not in HOME_ICON_FIXED]
+HOME_ICONS_ON_SCREEN = 6            # PolyOS 9.5.1 shows the first six visible icons, the rest via the ☰ menu
 
 # Office hours for the phones' power saving ("Off Hours" mode): powerSaving.officeHours.*.<day>
 DAYS = [("monday", "H", "Hétfő"), ("tuesday", "K", "Kedd"), ("wednesday", "Sze", "Szerda"), ("thursday", "Cs", "Csütörtök"),

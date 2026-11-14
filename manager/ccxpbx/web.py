@@ -519,7 +519,8 @@ def phone_screen(mac: str, request: Request, conn=Depends(get_db), _=Depends(req
         "siteWallpaper": settings.get("wallpaper", ""),
         "wallpapers": wallpapers.available(),
         "clock24": settings.get("clock_24h", "1") == "1",
-        "homeIcons": [{"key": k, "label": l, "desc": d} for k, l, d in plan.HOME_ICONS],
+        "homeIcons": [{"key": k, "label": l, "desc": d, "fixed": k in plan.HOME_ICON_FIXED} for k, l, d in plan.HOME_ICONS],
+        "iconsOnScreen": plan.HOME_ICONS_ON_SCREEN,
         "homeHidden": [k for k in (phone.get("home_hidden") or "").split(",") if k],
         "microbrowser": settings.get("microbrowser", "1") == "1",
     }
@@ -540,12 +541,12 @@ async def phone_screen_verify(mac: str, conn=Depends(get_db), _=Depends(require_
     if not ip:
         return JSONResponse({"error": "A telefon IP címe nem ismert (nincs regisztrálva?)."})
     try:
-        got = await run_in_threadpool(polyrest.config_get, ip, db.get_settings(conn)["phone_admin_password"], params)
+        got, raw = await run_in_threadpool(lambda: polyrest.config_get(ip, db.get_settings(conn)["phone_admin_password"], params, raw=True))
     except polyrest.PolyRestError as exc:
         return JSONResponse({"error": str(exc)})
     rows = [{"key": k, "desc": d, "expected": expected.get(f"homeScreen.{k}.enable", ""), "phone": got.get(f"homeScreen.{k}.enable")}
-            for k, _label, d in plan.HOME_ICONS]
-    return JSONResponse({"rows": rows, "ip": ip}, headers={"Cache-Control": "no-store"})
+            for k, _label, d in plan.HOME_ICONS if k not in plan.HOME_ICON_FIXED]
+    return JSONResponse({"rows": rows, "ip": ip, "raw": json.dumps(raw, ensure_ascii=False)[:1500]}, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/phones/{mac}/screen")

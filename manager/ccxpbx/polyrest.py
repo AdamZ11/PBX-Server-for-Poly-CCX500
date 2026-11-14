@@ -150,12 +150,26 @@ def dial(ip: str, password: str, number: str, line: int = 1):
                 {"data": {"Dest": number, "Line": str(line), "Type": "SIP"}})
 
 
-def config_get(ip: str, password: str, params: list[str]) -> dict[str, str | None]:
-    """Values the phone actually uses (POST /api/v1/mgmt/config/get). None = the phone did not report it."""
+def _config_value(v) -> str | None:
+    """Normalise one value of a mgmt/config/get answer (plain value, bool, or {"Value": ..., "Source": ...})."""
+    if isinstance(v, dict):
+        v = next((v[k] for k in ("Value", "value", "CurrentValue", "currentValue") if k in v), None)
+    if isinstance(v, bool):
+        return "1" if v else "0"
+    if v is None or v == "":
+        return None
+    text = str(v).strip()
+    return {"true": "1", "false": "0", "enabled": "1", "disabled": "0"}.get(text.lower(), text)
+
+
+def config_get(ip: str, password: str, params: list[str], raw: bool = False):
+    """Values the phone actually uses (POST /api/v1/mgmt/config/get). None = the phone did not report it.
+    With raw=True also returns the phone's answer for troubleshooting."""
     resp = call(ip, password, "POST", "/api/v1/mgmt/config/get", {"data": list(params)})
     data = resp.get("data") if isinstance(resp, dict) else None
     if isinstance(data, list):   # some firmware answers with [{"name": ..., "value": ...}]
-        data = {d.get("name") or d.get("Name"): d.get("value", d.get("Value")) for d in data if isinstance(d, dict)}
+        data = {d.get("name") or d.get("Name"): d for d in data if isinstance(d, dict)}
     if not isinstance(data, dict):
         raise PolyRestError(f"Váratlan válasz a telefontól: {str(resp)[:200]}")
-    return {p: (None if data.get(p) in (None, "") else str(data.get(p))) for p in params}
+    values = {p: _config_value(data.get(p)) for p in params}
+    return (values, resp) if raw else values
