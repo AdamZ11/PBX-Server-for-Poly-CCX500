@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Munkaidő · CCXPBX{% endblock %}
+{% block content %}
+<form method="post" action="/office-hours" id="oh-form">
+<div class="page-head">
+  <div>
+    <h1>Munkaidő és Off Hours mód</h1>
+    <p class="muted">Munkaidőn kívül a telefonok kijelzője elsötétül és „Off Hours” feliratot mutat. A telefon közben ugyanúgy hív és csörög, egy érintés felébreszti.</p>
+  </div>
+  <div class="row wrap">
+    <span class="muted small" id="dirty" hidden>Nem mentett változások</span>
+    <a class="btn secondary" href="/settings">Vissza</a>
+    <button>Mentés és küldés a telefonokra</button>
+  </div>
+</div>
+
+<div class="ccx-stage">
+  <div class="stack oh-main">
+    <section class="card">
+      <div class="page-head">
+        <label class="check"><input type="checkbox" name="power_saving" value="1" id="oh-enabled" {{ 'checked' if editor.enabled }}> Off Hours mód bekapcsolva</label>
+        <div class="row wrap">
+          <button type="button" class="secondary small" data-preset="7-19">H–P 7–19</button>
+          <button type="button" class="secondary small" data-preset="8-17">H–P 8–17</button>
+          <button type="button" class="secondary small" data-preset="8-16">H–P 8–16</button>
+          <button type="button" class="secondary small" data-preset="all">Minden nap 0–24</button>
+        </div>
+      </div>
+      <p class="muted small">Húzd a sávot egy nap során a munkaidő kijelöléséhez, vagy fogd meg a széleit. Az órák pontosan is beállíthatók jobb oldalt.</p>
+      <div class="oh-grid" id="oh-grid">
+        <div class="oh-scale"><span></span><div class="oh-ticks">{% for h in [0, 6, 12, 18, 24] %}<span style="left: {{ h / 24 * 100 }}%">{{ h }}</span>{% endfor %}</div><span></span></div>
+      </div>
+    </section>
+
+    <section class="card grid">
+      <h2 class="full">Mikor sötétüljön el a kijelző?</h2>
+      <label>Munkaidőben, ennyi perc tétlenség után <input name="idle_office" type="number" min="1" max="600" value="{{ editor.idleOffice }}"></label>
+      <label>Munkaidőn kívül, ennyi perc után <input name="idle_off" type="number" min="1" max="600" value="{{ editor.idleOff }}"></label>
+      <label>Érintés vagy hívás után még ennyi percig világos <input name="idle_user_ext" type="number" min="1" max="600" value="{{ editor.idleExt }}"></label>
+    </section>
+  </div>
+
+  <div class="ccx-col oh-phone">
+    <div class="ccx-mode" role="group" aria-label="Előnézet napja" id="oh-day-pick"></div>
+    <label class="oh-time">Időpont: <b id="oh-time-label" class="mono"></b>
+      <input type="range" min="0" max="23.75" step="0.25" id="oh-time"></label>
+    <div class="ccx-device" aria-label="Poly CCX500 előnézet">
+      <div class="ccx-handset"><div class="ccx-handset-top"></div><span class="ccx-hd">HD Voice</span><div class="ccx-cord"></div></div>
+      <div class="ccx-face">
+        <div class="ccx-bezel">
+          <div class="ccx-screen" id="oh-screen">
+            <div class="ccx-top"><span class="ccx-menu" aria-hidden="true"><i></i><i></i><i></i></span><span></span><span></span></div>
+            <div class="ccx-clock"><div id="oh-clock"></div><div id="oh-date"></div></div>
+            <div class="ccx-apps">
+              {% for label in ['Place a Call', 'Redial', 'Messages', 'Contacts', 'DND', 'Settings'] %}
+              <div class="ccx-app"><span class="ccx-circle"></span><span class="ccx-cap">{{ label }}</span></div>
+              {% endfor %}
+            </div>
+            <div class="ccx-dock"></div>
+            <div class="ccx-nav"><span>&#8592;</span><span class="ccx-home"></span></div>
+            <div class="ccx-offhours" id="oh-overlay"><b>Off Hours</b><span>Koppints a felébresztéshez</span></div>
+          </div>
+        </div>
+        <div class="ccx-speaker"></div>
+        <div class="ccx-foot"><span class="ccx-brand"></span><span class="ccx-mute"></span></div>
+      </div>
+    </div>
+    <p class="center" id="oh-state"></p>
+  </div>
+</div>
+<input type="hidden" name="office_hours" id="oh-value">
+</form>
+
+<script type="application/json" id="oh-data">{{ editor|tojson }}</script>
+<script src="/static/office.js" defer></script>
+{% endblock %}

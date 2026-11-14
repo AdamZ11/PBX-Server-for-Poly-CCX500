@@ -223,3 +223,25 @@ def test_home_screen_editor(client):
     r = client.post(f"/phones/{mac}/screen", data={"key_type_1": "speeddial", "key_value_1": "abc"}, follow_redirects=False)
     assert r.headers["location"] == f"/phones/{mac}/screen"
     assert 'lineKey.3.category="EFK"' in prov(client, f"/prov/ccx/{mac}-phone.cfg").text
+
+
+def test_office_hours_editor(client):
+    login(client)
+    page = client.get("/office-hours")
+    assert page.status_code == 200 and 'id="oh-data"' in page.text and "/static/office.js" in page.text
+    r = client.post("/office-hours", data={"power_saving": "1", "office_hours": "monday=8-17,saturday=9-12",
+                                           "idle_office": "30", "idle_off": "2", "idle_user_ext": "5"}, follow_redirects=False)
+    assert r.status_code == 303
+    site = prov(client, "/prov/ccx/site.cfg").text
+    assert 'powerSaving.enable="1"' in site
+    assert 'powerSaving.officeHours.startHour.monday="8"' in site and 'powerSaving.officeHours.duration.monday="9"' in site
+    assert 'powerSaving.officeHours.duration.tuesday="0"' in site      # no office hours that day
+    assert 'powerSaving.officeHours.duration.saturday="3"' in site
+    assert 'powerSaving.idleTimeout.officeHours="30"' in site and 'powerSaving.idleTimeout.offHours="2"' in site
+
+    # invalid spans are rejected and the stored hours stay
+    client.post("/office-hours", data={"office_hours": "monday=18-8", "idle_office": "30", "idle_off": "2", "idle_user_ext": "5"})
+    assert 'powerSaving.officeHours.startHour.monday="8"' in prov(client, "/prov/ccx/site.cfg").text
+    # unchecked box turns power saving off
+    client.post("/office-hours", data={"office_hours": "monday=8-17", "idle_office": "30", "idle_off": "2", "idle_user_ext": "5"})
+    assert 'powerSaving.enable="0"' in prov(client, "/prov/ccx/site.cfg").text

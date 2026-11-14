@@ -42,6 +42,35 @@ HOME_ICONS = [
 ]
 HOME_ICON_KEYS = [k for k, _, _ in HOME_ICONS]
 
+# Office hours for the phones' power saving ("Off Hours" mode): powerSaving.officeHours.*.<day>
+DAYS = [("monday", "H", "Hétfő"), ("tuesday", "K", "Kedd"), ("wednesday", "Sze", "Szerda"), ("thursday", "Cs", "Csütörtök"),
+        ("friday", "P", "Péntek"), ("saturday", "Szo", "Szombat"), ("sunday", "V", "Vasárnap")]
+DAY_KEYS = [d for d, _, _ in DAYS]
+DEFAULT_OFFICE_HOURS = ",".join(f"{d}=7-19" for d in DAY_KEYS[:5])   # the Poly factory default
+
+
+def parse_office_hours(text: str) -> dict[str, tuple[int, int]]:
+    """'monday=7-19,friday=8-14' -> {day: (start, end)}; days not listed have no office hours."""
+    hours = {}
+    for part in (text or "").split(","):
+        day, _, span = part.strip().partition("=")
+        start, _, end = span.partition("-")
+        if day not in DAY_KEYS:
+            continue
+        try:
+            a, b = int(start), int(end)
+        except ValueError:
+            raise ValidationError(f"Érvénytelen munkaidő: {part.strip()!r}")
+        if not (0 <= a < b <= 24):
+            raise ValidationError(f"{day}: a munkaidő 0 és 24 óra között legyen, a kezdete a vége előtt")
+        hours[day] = (a, b)
+    return hours
+
+
+def format_office_hours(hours: dict[str, tuple[int, int]]) -> str:
+    return ",".join(f"{d}={hours[d][0]}-{hours[d][1]}" for d in DAY_KEYS if d in hours)
+
+
 MAX_KEYS = 24   # CCX500 line key slots managed by the UI
 MAX_LINES = 4
 

@@ -133,7 +133,13 @@ DEFAULT_SETTINGS = {
     "softkey_park": "1",
     "softkey_record": "1",
     "wallpaper": "CCXPBX_hatter_01_kozpont.jpg",  # phone background for all phones ('' = none)
-    "microbrowser": "1",          # Applications menu opens the CCXPBX phone portal
+    "microbrowser": "1",
+    # --- power saving / "Off Hours" mode (powerSaving.*), defaults = Poly factory values ---
+    "power_saving": "1",
+    "office_hours": "monday=7-19,tuesday=7-19,wednesday=7-19,thursday=7-19,friday=7-19",
+    "idle_office": "40",          # minutes idle in office hours before the screen dims
+    "idle_off": "1",              # minutes idle outside office hours
+    "idle_user_ext": "10",        # extra minutes after the user touched the phone          # Applications menu opens the CCXPBX phone portal
     "phone_ui_brand": "0",        # brand colours for the phone's status bar / menus (needs reboot)
     "led_incoming": "1",          # status LED flashes on incoming calls (call.offering.led)
     "led_voicemail": "1",         # status LED flashes for new voicemail (msg.mwi.x.led)

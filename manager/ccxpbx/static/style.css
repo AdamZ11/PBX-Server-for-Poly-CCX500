@@ -194,6 +194,7 @@ details.raw pre { margin-top: 12px; }
 .center { text-align: center; }
 .ccx-stage { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
 .ccx-col { flex: 0 1 560px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.ccx-device + p, .ccx-device + .center { margin-top: 44px; }
 .ccx-inspector { flex: 1 1 320px; max-width: 460px; position: sticky; top: 16px; display: flex; flex-direction: column; gap: 10px; }
 .ccx-inspector h3 { margin: 10px 0 2px; font-size: 14px; }
 .ccx-inspector label { display: flex; flex-direction: column; gap: 4px; }
@@ -281,6 +282,42 @@ details.raw pre { margin-top: 12px; }
 .ccx-key.over .ccx-circle { outline: 0.6cqw dashed #fff; outline-offset: 0.9cqw; }
 .ccx-key.dragging { opacity: 0.35; }
 @media (max-width: 860px) { .ccx-inspector { position: static; max-width: none; } }
+
+/* ---------- office hours / Off Hours editor ---------- */
+.oh-main { flex: 1 1 560px; min-width: 0; }
+.oh-phone { flex: 0 1 380px; }
+.oh-phone .ccx-device { max-width: 380px; }
+.oh-time { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 380px; font-size: 14px; }
+.oh-time input { flex: 1; }
+.oh-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.oh-row, .oh-scale { display: grid; grid-template-columns: 110px minmax(0, 1fr) 224px; gap: 12px; align-items: center; }
+.oh-scale { font-size: 11px; color: var(--ccx-slate); }
+.oh-ticks { position: relative; height: 14px; }
+.oh-ticks span { position: absolute; transform: translateX(-50%); }
+.oh-ticks span:first-child { transform: none; }
+.oh-ticks span:last-child { transform: translateX(-100%); }
+.oh-track { position: relative; height: 34px; border-radius: 8px; cursor: crosshair; touch-action: none; user-select: none;
+            background: linear-gradient(90deg, rgba(14, 17, 22, 0.14) 1px, transparent 1px) 0 0 / calc(100% / 4) 100%,
+                        linear-gradient(90deg, rgba(14, 17, 22, 0.06) 1px, transparent 1px) 0 0 / calc(100% / 24) 100%, var(--ccx-paper);
+            box-shadow: inset 0 0 0 1px var(--ccx-line); }
+.oh-bar { position: absolute; top: 3px; bottom: 3px; border-radius: 6px; background: var(--ccx-amber); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); cursor: grab; }
+.oh-edge { position: absolute; top: 0; bottom: 0; width: 10px; cursor: ew-resize; }
+.oh-edge.l { left: -4px; } .oh-edge.r { right: -4px; }
+.oh-edge::after { content: ""; position: absolute; top: 25%; bottom: 25%; left: 4px; width: 2px; border-radius: 1px; background: rgba(14, 17, 22, 0.55); }
+.oh-now { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #0E1116; pointer-events: none; }
+.oh-times { display: flex; align-items: center; gap: 6px; }
+.oh-times select { min-width: 96px; flex: 1; }
+.oh-row.off .oh-day { color: var(--ccx-slate); }
+.oh-row.disabled .oh-track { opacity: 0.45; }
+.ccx-offhours { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqw;
+                background: rgba(0, 0, 0, 0.82); opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+.ccx-offhours b { font-size: 7cqw; font-weight: 400; letter-spacing: 0.02em; color: #c9ced6; }
+.ccx-offhours span { font-size: 3.2cqw; color: #8b939e; }
+.ccx-screen.is-off .ccx-offhours { opacity: 1; }
+@media (max-width: 700px) {
+  .oh-row { grid-template-columns: 1fr; gap: 4px; }
+  .oh-scale { display: none; }
+}
 
 /* ---------- login ---------- */
 .login { display: flex; flex-wrap: wrap; min-height: 100vh; }

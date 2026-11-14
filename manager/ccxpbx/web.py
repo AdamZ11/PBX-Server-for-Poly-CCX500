@@ -854,6 +854,47 @@ SETTING_BOOLS = ("lock_prov_server", "prov_polling", "clock_24h", "paging_enable
                  "microbrowser", "phone_ui_brand")
 
 
+@router.get("/office-hours", response_class=HTMLResponse)
+def office_hours_form(request: Request, conn=Depends(get_db), _=Depends(require_login)):
+    s = db.get_settings(conn)
+    try:
+        hours = plan.parse_office_hours(s.get("office_hours", ""))
+    except plan.ValidationError:
+        hours = plan.parse_office_hours(plan.DEFAULT_OFFICE_HOURS)
+    editor = {
+        "days": [{"key": k, "short": sh, "name": n} for k, sh, n in plan.DAYS],
+        "hours": {d: list(v) for d, v in hours.items()},
+        "enabled": s.get("power_saving", "1") == "1",
+        "idleOffice": s.get("idle_office", "40"), "idleOff": s.get("idle_off", "1"), "idleExt": s.get("idle_user_ext", "10"),
+        "wallpaper": s.get("wallpaper", ""), "clock24": s.get("clock_24h", "1") == "1",
+    }
+    return render(request, conn, "office_hours.html", editor=editor)
+
+
+@router.post("/office-hours")
+async def office_hours_save(request: Request, conn=Depends(get_db), _=Depends(require_login)):
+    form = await request.form()
+    try:
+        hours = plan.parse_office_hours(fval(form, "office_hours"))
+        timeouts = {}
+        for key, label, lo, hi in (("idle_office", "Munkaidőben", 1, 600), ("idle_off", "Munkaidőn kívül", 1, 600),
+                                   ("idle_user_ext", "Érintés után", 1, 600)):
+            value = fval(form, key)
+            if not value.isdigit() or not lo <= int(value) <= hi:
+                raise plan.ValidationError(f"{label}: {lo}-{hi} perc")
+            timeouts[key] = str(int(value))
+    except plan.ValidationError as exc:
+        flash(request, str(exc), "err")
+        return redirect("/office-hours")
+    db.set_setting(conn, "office_hours", plan.format_office_hours(hours))
+    db.set_setting(conn, "power_saving", "1" if fval(form, "power_saving") == "1" else "0")
+    for key, value in timeouts.items():
+        db.set_setting(conn, key, value)
+    conn.commit()
+    await run_in_threadpool(apply_now, request, conn, "all")
+    return redirect("/office-hours")
+
+
 @router.get("/settings", response_class=HTMLResponse)
 def settings_form(request: Request, conn=Depends(get_db), _=Depends(require_login)):
     fw_dir = config.PROV_DIR / config.FIRMWARE_DIR

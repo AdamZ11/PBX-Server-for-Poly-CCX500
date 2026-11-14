@@ -235,6 +235,20 @@ def site_params(snapshot: dict) -> dict:
     if s.get("phone_ui_brand") == "1":
         p.update(PHONE_UI_BRAND)
 
+    # --- power saving: outside office hours the screen dims and shows "Off Hours"
+    p["powerSaving.enable"] = "1" if s.get("power_saving", "1") == "1" else "0"
+    try:
+        hours = plan.parse_office_hours(s.get("office_hours", plan.DEFAULT_OFFICE_HOURS))
+    except plan.ValidationError:
+        hours = plan.parse_office_hours(plan.DEFAULT_OFFICE_HOURS)
+    for day in plan.DAY_KEYS:
+        start, end = hours.get(day, (0, 0))
+        p[f"powerSaving.officeHours.startHour.{day}"] = str(start)
+        p[f"powerSaving.officeHours.duration.{day}"] = str(end - start)
+    p["powerSaving.idleTimeout.officeHours"] = s.get("idle_office", "40")
+    p["powerSaving.idleTimeout.offHours"] = s.get("idle_off", "1")
+    p["powerSaving.idleTimeout.userInputExtension"] = s.get("idle_user_ext", "10")
+
     # --- status LED (top right). Verified on CCX500 / PolyOS 9.5.1: incoming call flashes red.
     # The ind.pattern.* LED patterns only drive line key LEDs, which the CCX500 does not have.
     p["call.offering.led"] = "1" if s.get("led_incoming", "1") == "1" else "0"
