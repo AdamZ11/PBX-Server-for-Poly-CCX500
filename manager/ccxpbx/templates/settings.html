@@ -10,7 +10,7 @@
 {%- endmacro %}
 {% block content %}
 <h1>Beállítások</h1>
-<form method="post" action="/settings">
+<form method="post" action="/settings" class="stack">
 <section class="card grid">
   <h2 class="full">Szerver és SIP</h2>
   {{ text('server_host', 'Szerver IP / DNS név', 'Ezen a címen éri el a telefon a SIP-et és a provisioningot') }}
@@ -63,16 +63,52 @@
   {{ text('paging_port', 'Paging port') }}
   <label class="full">Digit map <input name="digitmap" value="{{ settings.digitmap }}" class="mono" placeholder="{{ auto_digitmap }}">
     <small>Üresen hagyva automatikus a számozási tervből: <code>{{ auto_digitmap }}</code></small></label>
-  <label class="full">Egyedi Poly paraméterek minden telefonra (<code>kulcs=érték</code> soronként)
+  <label class="full"><span>Egyedi Poly paraméterek minden telefonra (<code>kulcs=érték</code> soronként)</span>
     <textarea name="site_overrides" rows="6" class="mono">{{ settings.site_overrides }}</textarea></label>
+</section>
+<section class="card" id="hatterkep">
+  <h2>Megjelenés a telefonokon</h2>
+  <p class="muted">Ez a háttérkép kerül minden telefonra. Telefononként a telefon oldalán választhatsz másikat, például a recepciónak.
+    A sötét képek a CCX500 alap, világos betűs felületével olvashatók jól, a papír változat világos témához való.</p>
+  <div class="wallpapers" role="radiogroup" aria-label="Háttérkép">
+    <label class="wallpaper"><input type="radio" name="wallpaper" value="" {{ 'checked' if not settings.wallpaper }}><span class="none">Nincs</span><span>Nincs háttérkép</span></label>
+    {% for w in wallpapers %}
+    <label class="wallpaper"><input type="radio" name="wallpaper" value="{{ w.file }}" {{ 'checked' if settings.wallpaper == w.file }}>
+      <img src="/wallpapers/{{ w.file }}" alt="" loading="lazy"><span>{{ w.label }}{% if not w.bundled %} <span class="muted">(feltöltött)</span>{% endif %}</span></label>
+    {% endfor %}
+  </div>
+  <div class="grid" style="margin-top: 16px">
+    {{ check('microbrowser', 'CCXPBX oldal a telefon Alkalmazások menüjében') }}
+    {{ check('phone_ui_brand', 'Arculati színek a telefon menüjében és állapotsorában (a telefon újraindul)') }}
+  </div>
 </section>
 <div class="row"><button>Beállítások mentése</button></div>
 </form>
 
 <section class="card">
+  <h2>Saját háttérkép feltöltése</h2>
+  <form method="post" action="/settings/wallpaper" enctype="multipart/form-data" class="row wrap">
+    <input type="file" name="file" required accept=".jpg,.jpeg,image/jpeg"><button class="secondary">Háttérkép feltöltése</button>
+  </form>
+  <p class="muted small">Sima (nem progresszív) JPG, legfeljebb 2 MB, ideálisan 720×1280 pixeles álló kép. A felső kb. 80 pixel maradjon nyugodt,
+    oda kerül a telefon állapotsora.</p>
+  {% set custom = wallpapers|rejectattr('bundled')|list %}
+  {% if custom %}
+  <table>
+    <thead><tr><th>Feltöltött kép</th><th></th></tr></thead>
+    {% for w in custom %}
+    <tr><td class="mono">{{ w.file }}</td>
+        <td class="right"><form method="post" action="/settings/wallpaper/{{ w.file }}/delete" onsubmit="return confirm('Törlöd a {{ w.file }} képet?')">
+          <button class="danger small">Törlés</button></form></td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</section>
+
+<section class="card">
   <h2>Firmware feltöltése</h2>
-  <form method="post" action="/settings/firmware" enctype="multipart/form-data" class="row">
-    <input type="file" name="file" required accept=".ld,.zip,.bin"><button>Feltöltés</button>
+  <form method="post" action="/settings/firmware" enctype="multipart/form-data" class="row wrap">
+    <input type="file" name="file" required accept=".ld,.zip,.bin"><button class="secondary">Firmware feltöltése</button>
   </form>
   <p class="muted small">A Poly oldaláról letöltött CCX500 OpenSIP (UC Software / PolyOS) .sip.ld fájlt töltsd fel.</p>
 </section>
@@ -82,7 +118,7 @@
   <form method="post" action="/settings/admin-password" class="row wrap">
     <input type="password" name="new_password" placeholder="új jelszó (min. 10)" required minlength="10" autocomplete="new-password">
     <input type="password" name="new_password2" placeholder="új jelszó újra" required autocomplete="new-password">
-    <button>Jelszó módosítása</button>
+    <button class="secondary">Jelszó módosítása</button>
   </form>
 </section>
 {% endblock %}

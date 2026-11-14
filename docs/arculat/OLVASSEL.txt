@@ -1,0 +1,20 @@
+CCXPBX arculati csomag
+======================
+
+CCXPBX_arculati_kezikonyv.pdf  - a reszletes arculati leiras (logo, szinek, betuk, GUI, hatterkepek, hangnem)
+tokens.css                     - CSS valtozok a GUI-hoz (szinek, betuk, meretek)
+
+hatterkepek/   4 telefon hatterkep, 720x1280, PNG es sima (nem progressziv) JPG
+  01_kozpont        - sotet, kozepen logo (alapertelmezett)
+  02_kapcsolotabla  - aljzat-racs patch-zsinorokkal
+  03_minimal        - halvany gyuru, also kis logo
+  04_papir          - vilagos valtozat
+
+logo/svg/      vektoros logok (a jel tisztan vektoros; a lockup SVG-k szovege
+               "Inter Display" betut keres - ha nincs telepitve, a PNG-t hasznald)
+logo/png/      a jel 64/256/512/1024 px-ben, a lockupok 1260 px szelesen
+logo/favicon.ico  16/32/48 px
+
+Online:
+  Arculati kezikonyv (szerkesztheto): https://claude.ai/artifact/BWiXReXWapz4BMKRhwUtEo
+  GUI tervek (vaszon):                https://claude.ai/artifact/13rXJTkrfubef6j3atkZCs

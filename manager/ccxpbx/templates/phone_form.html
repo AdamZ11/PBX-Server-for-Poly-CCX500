@@ -1,19 +1,25 @@
 {% extends "base.html" %}
+{% block title %}{{ 'Új telefon' if is_new else (phone.label or phone.mac) }} · CCXPBX{% endblock %}
 {% block content %}
-<h1>{{ 'Új telefon' if is_new else (phone.label or 'Telefon') ~ ' · ' ~ phone.mac }}</h1>
+<div class="page-head">
+  <div class="row">
+    <h1>{{ 'Új telefon' if is_new else (phone.label or 'Telefon') }}{% if not is_new %} <span class="mono muted" style="font-size: 18px">{{ phone.mac }}</span>{% endif %}</h1>
+    {% if not is_new %}<span id="live-indicator" class="live" title="Az állapot 3 másodpercenként frissül">Élő</span>{% endif %}
+  </div>
+</div>
 
 {% if not is_new %}
 <section class="card">
   <h2>Állapot és kezelés</h2>
-  <div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Asterisk: <span>{{ ami_error or '' }}</span></div>
+  <div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Az Asterisk nem érhető el: <span>{{ ami_error or '' }}</span></div>
   <dl class="kv" id="phone-live" data-mac="{{ phone.mac }}" data-has-lines="{{ '1' if phone.lines else '0' }}">
     <dt>SIP regisztráció</dt>
-    <dd class="js-sip">{% if contact %}<span class="pill ok">{{ contact.Status }}</span> <span class="mono small">{{ contact.Uri }}</span>
-        {% elif phone.lines %}<span class="pill err">nincs regisztrálva</span>{% else %}<span class="pill">nincs vonal rendelve</span>{% endif %}</dd>
-    <dt>IP cím</dt><dd class="js-ip">{{ ip or '-' }} {% if ip %}<a href="https://{{ ip }}" target="_blank" rel="noopener">telefon webfelülete ↗</a>{% endif %}</dd>
-    <dt>Modell / firmware</dt><dd class="js-model">{{ seen.model if seen }} {{ seen.firmware if seen }}</dd>
+    <dd class="js-sip">{% if contact %}<span class="status"><span class="dot free"></span>{{ contact.Status }}</span> <span class="mono small">{{ contact.Uri }}</span>
+        {% elif phone.lines %}<span class="status"><span class="dot off"></span>Nincs regisztrálva</span>{% else %}<span class="status"><span class="dot off"></span>Nincs vonal rendelve</span>{% endif %}</dd>
+    <dt>IP cím</dt><dd class="js-ip">{% if ip %}<span class="mono">{{ ip }}</span> · <a href="https://{{ ip }}" target="_blank" rel="noopener">telefon webfelülete</a>{% else %}–{% endif %}</dd>
+    <dt>Modell / firmware</dt><dd class="js-model">{{ seen.model if seen }} <span class="mono">{{ seen.firmware if seen }}</span></dd>
     <dt>User-Agent</dt><dd class="small js-ua">{{ (contact.UserAgent if contact else '') or (seen.user_agent if seen else '') }}</dd>
-    <dt>Utolsó provisioning</dt><dd class="js-seen">{{ seen.last_seen|localtime(settings.timezone_name) if seen }} ({{ seen.last_file if seen }})</dd>
+    <dt>Utolsó provisioning</dt><dd class="js-seen"><span class="mono">{{ seen.last_seen|localtime(settings.timezone_name) if seen }}</span> ({{ seen.last_file if seen }})</dd>
   </dl>
   <div class="row wrap">
     <form method="post" action="/phones/{{ phone.mac }}/action/resync"><button>Konfig szinkronizálás</button></form>
@@ -52,6 +58,13 @@
   <div class="grid">
     <label>MAC cím <input name="mac" value="{{ phone.mac }}" {{ '' if is_new else 'readonly' }} required placeholder="0004f2aabbcc"></label>
     <label>Megnevezés <input name="label" value="{{ phone.label }}" maxlength="64" placeholder="pl. Recepció"></label>
+    <label>Háttérkép
+      <select name="wallpaper">
+        <option value="" {{ 'selected' if not phone.wallpaper }}>Telephelyi alapértelmezés</option>
+        <option value="none" {{ 'selected' if phone.wallpaper == 'none' }}>Nincs háttérkép</option>
+        {% for w in wallpapers %}<option value="{{ w.file }}" {{ 'selected' if phone.wallpaper == w.file }}>{{ w.label }}</option>{% endfor %}
+      </select>
+      <small>A telephelyi háttérképet a <a href="/settings#hatterkep">Beállításokban</a> választod ki.</small></label>
   </div>
 
   <h2>Vonalak (SIP regisztrációk)</h2>
@@ -88,7 +101,7 @@
   </datalist>
 
   <h2>Egyedi Poly paraméterek</h2>
-  <label>Telefonra specifikus paraméterek (<code>kulcs=érték</code> soronként, ezek felülírják a generáltakat)
+  <label><span>Telefonra specifikus paraméterek (<code>kulcs=érték</code> soronként, ezek felülírják a generáltakat)</span>
     <textarea name="overrides" rows="5" class="mono" placeholder="up.backlight.idleIntensity=1">{{ phone.overrides }}</textarea></label>
   <label>Megjegyzés <textarea name="notes" rows="2">{{ phone.notes }}</textarea></label>
   <div class="row"><button>Mentés</button><a class="btn secondary" href="/phones">Vissza</a></div>

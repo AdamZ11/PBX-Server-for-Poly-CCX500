@@ -105,9 +105,41 @@ def _server_params(settings: dict) -> tuple[str, str, str]:
 
 
 def prov_server_name(settings: dict) -> str:
-    host = settings["server_host"]
+    return f"{_host_port(settings)}/prov"
+
+
+def _host_port(settings: dict) -> str:
     port = settings.get("http_port", "80")
-    return f"{host}{'' if port == '80' else ':' + port}/prov"
+    return f"{settings['server_host']}{'' if port == '80' else ':' + port}"
+
+
+def public_url(settings: dict, path: str) -> str:
+    """URL the phone uses for non-provisioning resources (wallpapers, phone portal)."""
+    return f"http://{_host_port(settings)}{path}"
+
+
+# CCXPBX brand colours for the phone's own UI (ui.* parameters, the phone restarts to apply)
+PHONE_UI_BRAND = {
+    "ui.statusBar.background": "#0E1116",
+    "ui.statusBar.text.color": "#F6F7F9",
+    "ui.softkey.background": "#1B2129",
+    "ui.softkey.text.color": "#F6F7F9",
+    "ui.menu.title.background": "#0E1116",
+    "ui.menu.background": "#0E1116",
+    "ui.menu.item.background": "#1B2129",
+    "ui.menu.item.text.color": "#F6F7F9",
+    "ui.home.background": "#0E1116",
+}
+
+
+def _wallpaper_params(settings: dict, choice: str) -> dict:
+    if choice == "none" or not choice:
+        return {"bg.color.bm.1.name": ""}
+    return {
+        "bg.color.bm.1.name": public_url(settings, f"/wallpapers/{choice}"),
+        # older UC Software selects the background with this; ignored where unknown
+        "bg.color.selection": "2,1",
+    }
 
 
 def site_params(snapshot: dict) -> dict:
@@ -193,6 +225,15 @@ def site_params(snapshot: dict) -> dict:
         "voice.volume.persist.headset": "1",
         "voice.volume.persist.handsfree": "1",
     })
+
+    # --- look: wallpaper, phone portal in the Applications menu, optional brand colours ---
+    p.update(_wallpaper_params(s, s.get("wallpaper", "")))   # '' clears a previous background
+    if s.get("microbrowser", "1") == "1" and host:
+        p["homeScreen.application.enable"] = "1"
+        p["mb.main.home"] = public_url(s, "/phone/")
+        p["mb.main.reloadPage"] = "1"
+    if s.get("phone_ui_brand") == "1":
+        p.update(PHONE_UI_BRAND)
 
     # --- status LED (top right). Verified on CCX500 / PolyOS 9.5.1: incoming call flashes red.
     # The ind.pattern.* LED patterns only drive line key LEDs, which the CCX500 does not have.
@@ -306,6 +347,9 @@ def phone_params(snapshot: dict, phone: dict) -> dict:
                 p[f"lineKey.{pos}.index"] = "0"
     else:
         p["lineKey.reassignment.enabled"] = "0"
+
+    if phone.get("wallpaper"):   # per-phone choice beats the site default
+        p.update(_wallpaper_params(s, phone["wallpaper"]))
 
     p.update(plan.parse_params(phone.get("overrides", "")))
     return p

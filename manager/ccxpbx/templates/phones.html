@@ -1,29 +1,37 @@
 {% extends "base.html" %}
+{% block title %}Telefonok · CCXPBX{% endblock %}
 {% block content %}
-<div class="row between"><h1>Telefonok (Poly CCX500)</h1>
+<div class="page-head">
   <div class="row">
+    <h1>Telefonok</h1>
+    <span id="live-indicator" class="live" title="Az oldal 3 másodpercenként frissül">Élő</span>
+  </div>
+  <div class="row wrap">
     <form method="post" action="/resync-all"><button class="secondary">Összes szinkronizálása</button></form>
     <a class="btn" href="/phones/new">+ Új telefon</a>
   </div>
 </div>
-<div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Asterisk: <span>{{ ami_error or '' }}</span></div>
-<table class="card">
-  <tr><th>MAC</th><th>Megnevezés</th><th>Vonalak</th><th>Állapot</th><th>IP</th><th>Firmware</th><th>Utolsó provisioning</th></tr>
+<div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Az Asterisk nem érhető el: <span>{{ ami_error or '' }}</span></div>
+<section class="card scroll-x" style="padding: 8px 12px">
+<table>
+  <thead><tr><th>MAC</th><th>Megnevezés</th><th>Vonalak</th><th>Állapot</th><th>IP</th><th>Firmware</th><th>Utolsó provisioning</th></tr></thead>
+  <tbody>
   {% for p in phones %}
   <tr data-mac="{{ p.mac }}">
     <td><a class="mono" href="/phones/{{ p.mac }}">{{ p.mac }}</a></td>
     <td>{{ p.label }}</td>
-    <td>{% for l in p.lines %}{{ l.ext }} {% endfor %}</td>
-    <td class="js-status">{% if not p.lines %}<span class="pill">nincs vonal</span>
-        {% elif p.registered %}<span class="pill ok">regisztrált</span>
-        {% else %}<span class="pill err">offline</span>{% endif %}</td>
-    <td class="js-ip">{{ p.seen.ip if p.seen }}</td>
-    <td class="js-fw">{{ p.seen.firmware if p.seen }}</td>
-    <td class="small js-seen">{{ p.seen.last_seen|localtime(settings.timezone_name) if p.seen }}</td>
+    <td class="mono">{% for l in p.lines %}{{ l.ext }} {% endfor %}</td>
+    <td class="js-status"><span class="status">{% if not p.lines %}<span class="dot off"></span>nincs vonal
+        {% elif p.registered %}<span class="dot free"></span>Regisztrált{% else %}<span class="dot off"></span>Offline{% endif %}</span></td>
+    <td class="mono js-ip">{{ p.seen.ip if p.seen }}</td>
+    <td class="mono js-fw">{{ p.seen.firmware if p.seen }}</td>
+    <td class="mono small js-seen">{{ p.seen.last_seen|localtime(settings.timezone_name) if p.seen }}</td>
   </tr>
   {% else %}
-  <tr><td colspan="7" class="muted">Még nincs telefon. Csatlakoztasd a CCX500-at (DHCP 66/160 opció vagy kézi provisioning szerver),
-    és megjelenik az Áttekintés oldalon, vagy vedd fel a MAC címe alapján.</td></tr>
+  <tr><td colspan="7" class="muted">Még nincs telefon. Csatlakoztasd a CCX500-at (DHCP 160/66 opció vagy kézi provisioning
+    szerver), és megjelenik az Áttekintés oldalon. Vagy vedd fel a MAC címe alapján.</td></tr>
   {% endfor %}
+  </tbody>
 </table>
+</section>
 {% endblock %}

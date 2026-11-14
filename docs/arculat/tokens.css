@@ -1,0 +1,45 @@
+/* CCXPBX arculati tokenek */
+:root {
+  /* Szinek */
+  --ccx-ink: #0E1116;
+  --ccx-panel: #1B2129;
+  --ccx-panel-border: #2A323D;
+  --ccx-amber: #FF8A1F;
+  --ccx-amber-dark: #C25E00;
+  --ccx-slate: #5B6573;
+  --ccx-gray-300: #C9CED6;
+  --ccx-line: #E3E6EB;
+  --ccx-divider: #EEF0F3;
+  --ccx-paper: #F6F7F9;
+  --ccx-white: #FFFFFF;
+
+  /* Allapotok */
+  --ccx-status-free: #1F9D55;
+  --ccx-status-ringing: #FF8A1F;
+  --ccx-status-busy: #B3261E;
+  --ccx-status-offline: #9AA3AE;
+
+  /* Betuk */
+  --ccx-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --ccx-font-ui: 'Inter', system-ui, sans-serif;
+  --ccx-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Meretek */
+  --ccx-radius-control: 10px;
+  --ccx-radius-card: 14px;
+  --ccx-hit: 44px;
+  --ccx-sidebar: 240px;
+  --ccx-space-1: 4px;
+  --ccx-space-2: 8px;
+  --ccx-space-3: 12px;
+  --ccx-space-4: 16px;
+  --ccx-space-5: 24px;
+  --ccx-space-6: 32px;
+  --ccx-space-7: 48px;
+  --ccx-space-8: 64px;
+  --ccx-transition: 150ms ease;
+}
+
+/* Google Fonts:
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+*/

@@ -87,9 +87,12 @@ class AMI:
                 continue
             result.append(msg)
             if len(result) == 1:
-                if msg.get("EventList") != "start":
+                # list actions announce themselves with "EventList: start" (some older
+                # ones only say "... will follow" in Message)
+                is_list = msg.get("EventList") == "start" or "follow" in msg.get("Message", "").lower()
+                if msg.get("Response") == "Error" or not is_list:
                     return result
-            elif msg.get("EventList") == "Complete":
+            elif msg.get("EventList") == "Complete" or msg.get("Event", "").endswith("Complete"):
                 return result
 
     # --- helpers -------------------------------------------------------
@@ -111,6 +114,40 @@ class AMI:
 
     def notify(self, endpoint: str, event: str) -> dict:
         return self.action("PJSIPNotify", Endpoint=endpoint, Variable=f"Event={event}")[0]
+
+    def extension_states(self) -> dict[str, str]:
+        """{exten: 'free'|'ring'|'busy'|'off'} from the dialplan hints."""
+        states = {}
+        for m in self.action("ExtensionStateList")[1:]:
+            if m.get("Event") == "ExtensionStatus" and m.get("Exten"):
+                states[m["Exten"]] = hint_state(m.get("Status", "-1"))
+        return states
+
+    def mailbox_count(self, mailbox: str) -> tuple[int, int]:
+        """(new, old) voicemail messages."""
+        resp = self.action("MailboxCount", Mailbox=mailbox)[0]
+        try:
+            return int(resp.get("NewMessages", 0)), int(resp.get("OldMessages", 0))
+        except ValueError:
+            return 0, 0
+
+    def parked_calls(self) -> list[dict]:
+        return [m for m in self.action("ParkedCalls")[1:] if m.get("Event") == "ParkedCall"]
+
+
+def hint_state(status: str) -> str:
+    """Asterisk extension state bits -> CCXPBX status (free / ring / busy / off)."""
+    try:
+        bits = int(status)
+    except ValueError:
+        return "off"
+    if bits < 0 or bits & 4:      # removed / unavailable
+        return "off"
+    if bits & 8 and not bits & 1:  # ringing (not also in use)
+        return "ring"
+    if bits & (1 | 2 | 16):        # in use / busy / on hold
+        return "busy"
+    return "free"
 
 
 def safe_call(fn, default=None):

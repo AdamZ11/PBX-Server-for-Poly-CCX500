@@ -1,11 +1,25 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="card narrow">
-  <h1>CCX PBX bejelentkezés</h1>
-  <form method="post" action="/login" class="stack">
-    <label>Felhasználó <input name="username" value="admin" autocomplete="username" required></label>
-    <label>Jelszó <input name="password" type="password" autocomplete="current-password" required autofocus></label>
-    <button>Belépés</button>
-  </form>
+{% block title %}Belépés · CCXPBX{% endblock %}
+{% block public %}
+<div class="login">
+  <div class="login-brand">
+    <div class="brand">{{ mark(40) }}<span class="wordmark">CCX<span>PBX</span></span></div>
+    <div>
+      <div class="slogan">Saját alközpont, saját szabályok.</div>
+      <p>Mellékek, telefonok, trunkök és útvonalak – egy helyen, a saját szervereden.</p>
+    </div>
+    <div class="meta">{{ server.name }} · SIP {{ settings.sip_port }}{% if settings.sip_transport == 'tls' %} · TLS {{ settings.tls_port }}{% endif %}</div>
+  </div>
+  <main class="login-form">
+    <form method="post" action="/login">
+      <h1>Belépés</h1>
+      {% for kind, msg in flashes %}<div class="flash {{ kind }}">{{ msg }}</div>{% endfor %}
+      <label for="user">Felhasználónév
+        <input id="user" name="username" value="admin" autocomplete="username" required></label>
+      <label for="pass">Jelszó
+        <input id="pass" name="password" type="password" autocomplete="current-password" required autofocus></label>
+      <button>Belépés</button>
+    </form>
+  </main>
 </div>
 {% endblock %}

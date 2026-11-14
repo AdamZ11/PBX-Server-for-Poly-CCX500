@@ -1,46 +1,60 @@
+{%- macro mark(size=36) -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="12" fill="#1B2129" stroke="#2A323D" stroke-width="2"/><circle cx="19" cy="24" r="9" fill="none" stroke="#FF8A1F" stroke-width="4"/><circle cx="19" cy="24" r="3" fill="#FF8A1F"/><path d="M30 24h10" stroke="#F6F7F9" stroke-width="4" stroke-linecap="round"/></svg>
+{%- endmacro -%}
 <!doctype html>
 <html lang="hu">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}CCX PBX{% endblock %}</title>
+<title>{% block title %}CCXPBX{% endblock %}</title>
+<link rel="icon" href="/static/brand/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body{% if live_page %} data-live="{{ live_page }}"{% endif %}>
 {% if user %}
-<header>
-  <a class="brand" href="/">CCX&nbsp;PBX</a>
-  <nav>
-    <a href="/">Áttekintés</a>
-    <a href="/extensions">Mellékek</a>
-    <a href="/phones">Telefonok</a>
-    <a href="/ringgroups">Csoportok</a>
-    <a href="/trunks">Trönkök</a>
-    <a href="/settings">Beállítások</a>
-  </nav>
-  {% if live_page %}<span id="live-indicator" class="live" title="Az oldal 3 másodpercenként frissül">● élő</span>{% endif %}
-  <form method="post" action="/logout"><button class="link">Kilépés</button></form>
-</header>
-{% if dirty %}
-<div class="banner warn">
-  Mentett, de még nem alkalmazott változások vannak.
-  <form method="post" action="/apply" class="inline">
-    <label><input type="checkbox" name="resync" value="1" checked> telefonok szinkronizálása is</label>
-    <button>Változások alkalmazása</button>
-  </form>
+{%- set path = request.url.path -%}
+{%- set nav = [('/', 'Áttekintés'), ('/extensions', 'Mellékek'), ('/phones', 'Telefonok'), ('/ringgroups', 'Csengetési csoportok'), ('/trunks', 'Trunkök és útvonalak'), ('/settings', 'Beállítások')] -%}
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="CCXPBX kezdőlap">{{ mark(36) }}<span class="wordmark">CCX<span>PBX</span></span></a>
+    <nav class="nav" aria-label="Fő menü">
+      {% for href, label in nav %}
+      <a href="{{ href }}" class="{{ 'active' if (href == '/' and path == '/') or (href != '/' and path.startswith(href)) }}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <div class="server-card" id="server-card">
+      <div class="name"><span class="dot {{ 'free' if server.asterisk else 'off' }}" id="srv-dot"></span><span id="srv-name">{{ server.name }}</span></div>
+      <div class="meta" id="srv-meta">{{ server.meta }}</div>
+      <form method="post" action="/logout"><button class="link">Kilépés</button></form>
+    </div>
+  </aside>
+  <div class="workspace">
+    {% if dirty %}
+    <div class="banner warn">
+      Mentett, de az Asteriskban még nem alkalmazott változások vannak.
+      <form method="post" action="/apply" class="inline">
+        <label class="check"><input type="checkbox" name="resync" value="1" checked> telefonok szinkronizálása is</label>
+        <button class="secondary">Változások alkalmazása</button>
+      </form>
+    </div>
+    {% endif %}
+    {% if restart_required %}
+    <div class="banner err">
+      A SIP transport beállítás megváltozott, az Asteriskot újra kell indítani.
+      <form method="post" action="/restart-asterisk" class="inline"><button class="secondary">Asterisk újraindítása</button></form>
+    </div>
+    {% endif %}
+    <main>
+      {% for kind, msg in flashes %}<div class="flash {{ kind }}">{{ msg }}</div>{% endfor %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 </div>
+{% else %}
+{% block public %}{% endblock %}
 {% endif %}
-{% if restart_required %}
-<div class="banner err">
-  A SIP transport beállítás megváltozott, az Asterisk újraindítása szükséges.
-  <form method="post" action="/restart-asterisk" class="inline"><button>Asterisk újraindítása</button></form>
-</div>
-{% endif %}
-{% endif %}
-<main>
-{% for kind, msg in flashes %}<div class="flash {{ kind }}">{{ msg }}</div>{% endfor %}
-{% block content %}{% endblock %}
-</main>
 {% if live_page %}<script src="/static/live.js" defer></script>{% endif %}
 </body>
 </html>

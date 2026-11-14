@@ -19,6 +19,9 @@ SECRET_KEY = os.environ.get("CCXPBX_SECRET_KEY", "")
 
 # Directories phones may upload into (relative to PROV_DIR), see master config.
 UPLOAD_DIRS = ("logs", "overrides", "contacts", "calllists")
+WALLPAPER_DIR = Path(os.environ.get("CCXPBX_WALLPAPER_DIR", str(DATA_DIR / "wallpapers")))   # uploaded
+BUNDLED_WALLPAPER_DIR = Path(__file__).parent / "static" / "brand" / "wallpapers"         # brand package
+MAX_WALLPAPER = 2 * 1024 * 1024
 FIRMWARE_DIR = "firmware"
 MAX_UPLOAD = 50 * 1024 * 1024   # core dump archives can be several MB
 MAX_LOG_SIZE = 5 * 1024 * 1024

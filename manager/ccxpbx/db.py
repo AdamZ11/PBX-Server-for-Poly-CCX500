@@ -132,6 +132,9 @@ DEFAULT_SETTINGS = {
     "web_ui": "1",
     "softkey_park": "1",
     "softkey_record": "1",
+    "wallpaper": "CCXPBX_hatter_01_kozpont.jpg",  # phone background for all phones ('' = none)
+    "microbrowser": "1",          # Applications menu opens the CCXPBX phone portal
+    "phone_ui_brand": "0",        # brand colours for the phone's status bar / menus (needs reboot)
     "led_incoming": "1",          # status LED flashes on incoming calls (call.offering.led)
     "led_voicemail": "1",         # status LED flashes for new voicemail (msg.mwi.x.led)
     "site_overrides": "",         # extra Poly parameters for all phones (key=value lines)
@@ -169,8 +172,18 @@ def connect(path: Path | str | None = None) -> sqlite3.Connection:
     return conn
 
 
+MIGRATIONS = [
+    # (table, column, definition) - added to existing databases on start
+    ("phones", "wallpaper", "TEXT NOT NULL DEFAULT ''"),   # '' = site default, 'none' = no background
+]
+
+
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    for table, column, definition in MIGRATIONS:
+        cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if column not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
     for key, value in DEFAULT_SETTINGS.items():
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)", (key, value))
     for key in SECRET_SETTINGS:

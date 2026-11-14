@@ -108,6 +108,21 @@ fájlt átmásolni, majd a telepítőt lefuttatni.
 Számozási terv: 1xx segélyhívók (112, 104, 105, 107 – vegyél fel nekik kimenő útvonalat), 2000–5999 mellékek,
 6xxx csoportok, 700–708 park, 800–809 konferencia. A 1xxx mellékszámok ütköznének a 112-vel, ezért nem javasoltak.
 
+## Arculat
+
+A webes felület a CCXPBX arculati kézikönyvet követi ([docs/arculat](docs/arculat/), PDF, logók, `tokens.css`):
+sötét menüsáv, világos munkaterület, egyetlen kiemelőszín (borostyán), Space Grotesk / Inter / JetBrains Mono betűk
+(Google Fonts; internet nélkül rendszerbetűvel jelenik meg).
+
+A telefonokon:
+* **Háttérkép:** a négy arculati háttérkép (720×1280, sima JPG) közül a *Beállítások → Megjelenés a telefonokon*
+  részben választasz, telefononként felülírható, és saját JPG is feltölthető.
+* **CCXPBX oldal az *Alkalmazások* menüben:** a telefon böngészője a `http://<szerver>/phone/` oldalt nyitja meg:
+  hangposta, telefonkönyv élő állapottal (koppintásra hív), parkolt hívások, hasznos kódok, rendszeradatok. Az oldal a
+  telefon IP-címe alapján ismeri fel a készüléket; más gépről csak bejelentkezett admin láthatja előnézetként
+  (`/phone/?mac=<mac>`).
+* **Arculati színek a telefon menüjében (opcionális):** sötét állapotsor és menük; a telefon a bekapcsoláskor újraindul.
+
 ## Könyvtárszerkezet
 
 ```

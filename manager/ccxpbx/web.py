@@ -11,7 +11,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import ami, asterisk_gen, config, db, httpauth, plan, poly, polyrest, restview, services
+from . import ami, asterisk_gen, config, db, httpauth, plan, poly, polyrest, restview, services, wallpapers
 from .services import get_db
 
 router = APIRouter()
@@ -63,6 +63,7 @@ def render(request: Request, conn, name: str, **ctx) -> HTMLResponse:
         flashes=request.session.pop("flash", []),
         user=request.session.get("user"),
     )
+    ctx.setdefault("server", services.server_status())
     return templates.TemplateResponse(request, name, ctx)
 
 
@@ -149,6 +150,8 @@ def number_in_use(conn, num: str) -> bool:
 # ---------------------------------------------------------------- auth
 @router.get("/login", response_class=HTMLResponse)
 def login_form(request: Request, conn=Depends(get_db)):
+    if request.session.get("user"):
+        return redirect("/")
     return render(request, conn, "login.html")
 
 
@@ -190,9 +193,10 @@ def _rtt_ms(value) -> float | None:
 def live_data(conn) -> dict:
     """Everything the live-updating pages show, as plain JSON-able data."""
     def collect(a):
-        return {"contacts": a.contacts(), "channels": a.channels(), "regs": a.registrations()}
+        return {"contacts": a.contacts(), "channels": a.channels(), "regs": a.registrations(),
+                "states": a.extension_states()}
 
-    live, err = ami.safe_call(collect, {"contacts": [], "channels": [], "regs": []})
+    live, err = ami.safe_call(collect, {"contacts": [], "channels": [], "regs": [], "states": {}})
     tz = db.get_settings(conn).get("timezone_name", "")
     ext_to_mac = {r["ext"]: r["mac"] for r in conn.execute("SELECT ext, mac FROM phone_lines")}
     contacts = [{
@@ -242,15 +246,44 @@ def live_data(conn) -> dict:
             "last_seen": s.get("last_seen", ""),
             "last_file": s.get("last_file", ""),
         }
+    registered_eps = set(by_endpoint)
+    extensions = []
+    for r in conn.execute("SELECT ext, name FROM extensions ORDER BY ext"):
+        state = live["states"].get(r["ext"]) or ("free" if r["ext"] in registered_eps else "off")
+        if state != "off" and r["ext"] not in registered_eps:
+            state = "off"
+        extensions.append({"num": r["ext"], "name": r["name"], "state": state, "label": STATE_LABELS[state]})
+    offline = [e for e in extensions if e["state"] == "off"]
+    calls = len({ch.get("BridgeId") or ch.get("Uniqueid") or ch.get("Channel") for ch in live["channels"] or []})
+    online_phones = sum(1 for p in phones.values() if p["registered"])
+    trunks_up = sum(1 for r in regs if r["status"].lower() == "registered")
     counts = {
-        "extensions": conn.execute("SELECT COUNT(*) FROM extensions").fetchone()[0],
+        "extensions": len(extensions),
         "phones": len(phones),
         "registered": len(contacts),
         "channels": len(channels),
+        "calls": calls,
     }
+    tiles = [
+        {"id": "calls", "label": "Aktív hívások", "value": str(calls),
+         "sub": f"{len(channels)} csatorna" if channels else "nincs folyamatban lévő hívás"},
+        {"id": "exts", "label": "Regisztrált mellékek",
+         "value": f"{len(extensions) - len(offline)}/{len(extensions)}",
+         "sub": ("mind elérhető" if extensions and not offline else
+                 f"{len(offline)} offline: " + ", ".join(f"{e['num']} {e['name']}" for e in offline[:2])
+                 + ("…" if len(offline) > 2 else "") if extensions else "még nincs mellék")},
+        {"id": "phones", "label": "Telefonok", "value": f"{online_phones}/{len(phones)}",
+         "sub": f"{len(unknown)} új telefon vár felvételre" if unknown else "online / összes"},
+        {"id": "trunks", "label": "Trunkök", "value": f"{trunks_up}/{len(regs)}" if regs else "–",
+         "sub": "regisztrálva / összes" if regs else "nincs regisztráló trunk"},
+    ]
+    server = services.server_status(asterisk_ok=err is None)
     return {"contacts": contacts, "channels": channels, "regs": regs, "unknown": unknown, "phones": phones,
-            "counts": counts, "ami_error": err, "time": localtime(datetime.now(timezone.utc)
-                                                                 .strftime("%Y-%m-%d %H:%M:%S"), tz)[11:]}
+            "extensions": extensions, "tiles": tiles, "counts": counts, "server": server,
+            "ami_error": err, "time": localtime(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), tz)[11:]}
+
+
+STATE_LABELS = {"free": "Szabad", "ring": "Csörög", "busy": "Hívásban", "off": "Offline"}
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -258,7 +291,7 @@ async def dashboard(request: Request, conn=Depends(get_db), _=Depends(require_lo
     data = await run_in_threadpool(live_data, conn)
     mismatch = services.server_host_mismatch(db.get_settings(conn)["server_host"])
     return render(request, conn, "dashboard.html", live=data, ami_error=data["ami_error"],
-                  ip_mismatch=mismatch, live_page="dashboard")
+                  ip_mismatch=mismatch, live_page="dashboard", server=data["server"])
 
 
 @router.get("/api/live")
@@ -365,12 +398,12 @@ def _phone_form_ctx(conn, phone: dict) -> dict:
     exts = conn.execute("SELECT ext, name FROM extensions ORDER BY ext").fetchall()
     keys = {k["pos"]: k for k in phone.get("keys", [])}
     lines = {l["idx"]: l for l in phone.get("lines", [])}
-    return {"phone": phone, "exts": exts, "keys": keys, "lines": lines}
+    return {"phone": phone, "exts": exts, "keys": keys, "lines": lines, "wallpapers": wallpapers.available()}
 
 
 @router.get("/phones/new", response_class=HTMLResponse)
 def phone_new(request: Request, mac: str = "", conn=Depends(get_db), _=Depends(require_login)):
-    phone = {"mac": mac, "label": "", "model": "CCX500", "overrides": "", "notes": "", "lines": [], "keys": []}
+    phone = {"mac": mac, "label": "", "model": "CCX500", "overrides": "", "notes": "", "wallpaper": "", "lines": [], "keys": []}
     return render(request, conn, "phone_form.html", is_new=True, **_phone_form_ctx(conn, phone))
 
 
@@ -431,10 +464,15 @@ async def phone_save(request: Request, conn=Depends(get_db), _=Depends(require_l
         return redirect(f"/phones/new?mac={raw_mac}" if is_new else f"/phones/{raw_mac}")
 
     label, notes = plan.clean_text(fval(form, "label")), (form.get("notes") or "")[:1000]
+    wallpaper = fval(form, "wallpaper")
+    if wallpaper not in ("", "none") and not wallpapers.path(wallpaper):
+        wallpaper = ""
     if exists:
-        conn.execute("UPDATE phones SET label=?, overrides=?, notes=? WHERE mac=?", (label, overrides, notes, mac))
+        conn.execute("UPDATE phones SET label=?, overrides=?, notes=?, wallpaper=? WHERE mac=?",
+                     (label, overrides, notes, wallpaper, mac))
     else:
-        conn.execute("INSERT INTO phones(mac, label, overrides, notes) VALUES (?,?,?,?)", (mac, label, overrides, notes))
+        conn.execute("INSERT INTO phones(mac, label, overrides, notes, wallpaper) VALUES (?,?,?,?,?)",
+                     (mac, label, overrides, notes, wallpaper))
     conn.execute("DELETE FROM phone_lines WHERE mac=?", (mac,))
     conn.execute("DELETE FROM phone_keys WHERE mac=?", (mac,))
     conn.executemany("INSERT INTO phone_lines(mac, idx, ext, line_keys) VALUES (?,?,?,?)",
@@ -747,6 +785,7 @@ SETTING_RULES = {
     "paging_address": re.compile(r"^2(2[4-9]|3[0-9])\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$"),
     "paging_port": re.compile(r"^[0-9]{2,5}$"),
     "firmware_file": re.compile(r"^[A-Za-z0-9._-]{0,128}$"),
+    "wallpaper": re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]{0,120}\.jpe?g)?$", re.I),
 }
 # Readable rules for fields whose value must never be echoed back (passwords)
 SETTING_HELP = {
@@ -755,7 +794,8 @@ SETTING_HELP = {
     "phone_user_password": "Telefon user jelszó: legfeljebb 32 karakter, szóköz, idézőjel, \\ és ` nélkül",
 }
 SETTING_BOOLS = ("lock_prov_server", "prov_polling", "clock_24h", "paging_enabled", "intercom_unmute",
-                 "rest_api", "web_ui", "softkey_park", "softkey_record", "led_incoming", "led_voicemail")
+                 "rest_api", "web_ui", "softkey_park", "softkey_record", "led_incoming", "led_voicemail",
+                 "microbrowser", "phone_ui_brand")
 
 
 @router.get("/settings", response_class=HTMLResponse)
@@ -765,7 +805,8 @@ def settings_form(request: Request, conn=Depends(get_db), _=Depends(require_logi
     snap = db.snapshot(conn)
     auto_map = plan.build_digitmap(snap["extensions"], snap["ring_groups"], snap["outbound"])
     return render(request, conn, "settings.html", firmware=firmware, auto_digitmap=auto_map,
-                  prov_url=f"http://{poly.prov_server_name(snap['settings'])}")
+                  prov_url=f"http://{poly.prov_server_name(snap['settings'])}",
+                  wallpapers=wallpapers.available())
 
 
 @router.post("/settings")
@@ -787,6 +828,8 @@ async def settings_save(request: Request, conn=Depends(get_db), _=Depends(requir
         updates["site_overrides"] = form.get("site_overrides") or ""
         plan.parse_params(updates["site_overrides"])
         updates["inbound_default"] = valid_dest(conn, fval(form, "inbound_default"))
+        if updates.get("wallpaper") and not wallpapers.path(updates["wallpaper"]):
+            raise plan.ValidationError("A kiválasztott háttérkép nem található.")
         if updates["sip_transport"] == "tls" and not Path(config.TLS_CERT).exists():
             raise plan.ValidationError(f"TLS-hez hiányzik a tanúsítvány: {config.TLS_CERT}")
     except plan.ValidationError as exc:
@@ -797,6 +840,31 @@ async def settings_save(request: Request, conn=Depends(get_db), _=Depends(requir
     flash(request, "Beállítások mentve.")
     await run_in_threadpool(apply_now, request, conn, "all")
     return redirect("/settings")
+
+
+@router.post("/settings/wallpaper")
+async def wallpaper_upload(request: Request, file: UploadFile, conn=Depends(get_db), _=Depends(require_login)):
+    data = await file.read(config.MAX_WALLPAPER + 1)
+    try:
+        name, warning = wallpapers.save_upload(file.filename or "", data)
+    except wallpapers.WallpaperError as exc:
+        flash(request, str(exc), "err")
+        return redirect("/settings#hatterkep")
+    flash(request, f"Háttérkép feltöltve: {name}. Válaszd ki, és mentsd el a beállításokat.")
+    if warning:
+        flash(request, warning, "warn")
+    return redirect("/settings#hatterkep")
+
+
+@router.post("/settings/wallpaper/{name}/delete")
+def wallpaper_delete(name: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
+    in_use = (db.get_settings(conn).get("wallpaper") == name
+              or conn.execute("SELECT 1 FROM phones WHERE wallpaper=?", (name,)).fetchone())
+    if in_use:
+        flash(request, "Ezt a háttérképet egy telefon vagy a telephelyi beállítás használja, előbb válassz másikat.", "err")
+    elif wallpapers.delete(name):
+        flash(request, f"Háttérkép törölve: {name}.")
+    return redirect("/settings#hatterkep")
 
 
 @router.post("/settings/firmware")

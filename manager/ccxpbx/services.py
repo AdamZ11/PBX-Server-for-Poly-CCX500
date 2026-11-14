@@ -1,4 +1,5 @@
 """Operations shared by the web UI and the CLI."""
+import os
 import re
 import socket
 
@@ -73,6 +74,35 @@ def apply_config(conn) -> dict:
     if not result["error"]:
         db.set_setting(conn, "dirty", "0")
     return result
+
+
+def server_status(asterisk_ok: bool | None = None) -> dict:
+    """Sidebar card: host name, uptime and load (Linux /proc; best effort elsewhere)."""
+    name = socket.gethostname().split(".")[0] or "ccxpbx"
+    parts = []
+    try:
+        seconds = float(open("/proc/uptime").read().split()[0])
+        days, rest = divmod(int(seconds), 86400)
+        parts.append(f"uptime {days}n {rest // 3600:02d}ó" if days else f"uptime {rest // 3600}ó {rest % 3600 // 60:02d}p")
+    except (OSError, ValueError, IndexError):
+        pass
+    try:
+        load = os.getloadavg()[0]
+        parts.append(f"terhelés {load:.2f}")
+    except (OSError, AttributeError):
+        pass
+    if asterisk_ok is None:
+        asterisk_ok = _asterisk_reachable()
+    parts.append("Asterisk fut" if asterisk_ok else "Asterisk nem elérhető")
+    return {"name": name, "meta": " · ".join(parts), "asterisk": asterisk_ok}
+
+
+def _asterisk_reachable() -> bool:
+    try:
+        with socket.create_connection((config.AMI_HOST, config.AMI_PORT), timeout=0.5):
+            return True
+    except OSError:
+        return False
 
 
 def local_ips() -> set[str]:

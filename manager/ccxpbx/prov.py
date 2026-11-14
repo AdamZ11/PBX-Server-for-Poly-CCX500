@@ -4,7 +4,7 @@ import re
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 
-from . import config, db, httpauth, poly
+from . import config, db, httpauth, poly, wallpapers
 from .services import get_db, record_seen
 
 router = APIRouter()
@@ -91,6 +91,15 @@ def prov_get(path: str, request: Request, conn=Depends(get_db)):
         if f.is_file():
             return FileResponse(f)
     return PlainTextResponse("Not found", status_code=404)
+
+
+@router.get("/wallpapers/{name}")
+def wallpaper(name: str):
+    """Public on purpose: phones fetch bg.color.bm.1.name without provisioning credentials."""
+    f = wallpapers.path(name)
+    if not f:
+        return PlainTextResponse("Not found", status_code=404)
+    return FileResponse(f, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=3600"})
 
 
 @router.put("/prov/{path:path}")

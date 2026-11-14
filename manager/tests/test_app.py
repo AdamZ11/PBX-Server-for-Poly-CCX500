@@ -144,14 +144,14 @@ def test_live_api(client):
 def browser_form(html: str) -> dict:
     """What a browser submits for the settings form: text inputs, checked boxes, selected options, textareas."""
     import re
-    form_html = html.split('<form method="post" action="/settings">', 1)[1].split("</form>", 1)[0]
+    form_html = re.split(r'<form method="post" action="/settings"[^>]*>', html, maxsplit=1)[1].split("</form>", 1)[0]
     data = {}
     for tag in re.findall(r"<input\b[^>]*>", form_html):
         name = re.search(r'name="([^"]+)"', tag)
         if not name:
             continue
         value = re.search(r'value="([^"]*)"', tag)
-        if 'type="checkbox"' in tag and "checked" not in tag:
+        if re.search(r'type="(checkbox|radio)"', tag) and "checked" not in tag:
             continue
         data[name.group(1)] = value.group(1) if value else ""
     for name, body in re.findall(r'<select name="([^"]+)">(.*?)</select>', form_html, re.S):

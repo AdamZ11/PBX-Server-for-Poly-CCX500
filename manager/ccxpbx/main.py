@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import config, db, prov, web
+from . import config, db, phoneportal, prov, web
 
 
 def create_app() -> FastAPI:
@@ -36,6 +36,7 @@ def create_app() -> FastAPI:
         return response
 
     app.include_router(prov.router)
+    app.include_router(phoneportal.router)
     app.include_router(web.router)
     app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
     return app

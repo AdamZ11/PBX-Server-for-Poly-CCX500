@@ -1,0 +1,135 @@
+{%- macro mark(size=40) -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="12" fill="#1B2129" stroke="#2A323D" stroke-width="2"/><circle cx="19" cy="24" r="9" fill="none" stroke="#FF8A1F" stroke-width="4"/><circle cx="19" cy="24" r="3" fill="#FF8A1F"/><path d="M30 24h10" stroke="#F6F7F9" stroke-width="4" stroke-linecap="round"/></svg>
+{%- endmacro -%}
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% if refresh %}<meta http-equiv="refresh" content="10">{% endif %}
+<title>{{ title }}</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: #0E1116; color: #F6F7F9; font: 18px/1.4 Inter, system-ui, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .top { display: flex; align-items: center; gap: 12px; }
+  .top .back { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px;
+               background: #1B2129; border: 1px solid #2A323D; font-size: 24px; }
+  .word { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em; }
+  .word span { color: #FF8A1F; }
+  h1 { margin: 0; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .sub { color: #C9CED6; font-size: 16px; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .card { background: #1B2129; border: 1px solid #2A323D; border-radius: 14px; padding: 16px; }
+  .big { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .big b { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 40px; line-height: 1; }
+  .list { display: flex; flex-direction: column; background: #1B2129; border: 1px solid #2A323D; border-radius: 14px; overflow: hidden; }
+  .item { display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 10px 16px; border-bottom: 1px solid #2A323D; }
+  .item:last-child { border-bottom: 0; }
+  a.item:active, a.btn:active { background: #2A323D; }
+  .item .grow { flex: 1; min-width: 0; }
+  .item .name { font-weight: 600; }
+  .item .meta { color: #C9CED6; font-size: 15px; }
+  .item .num { font-family: 'JetBrains Mono', ui-monospace, monospace; color: #C9CED6; font-size: 16px; }
+  .chev { color: #5B6573; font-size: 26px; }
+  .dot { display: inline-block; width: 12px; height: 12px; border-radius: 6px; flex: 0 0 auto; }
+  .free { background: #1F9D55; } .busy { background: #B3261E; }
+  .ring { background: #FF8A1F; box-shadow: 0 0 0 4px rgba(255, 138, 31, 0.3); }
+  .off { border: 2px solid #9AA3AE; }
+  .state { display: inline-flex; align-items: center; gap: 8px; color: #C9CED6; font-size: 15px; white-space: nowrap; }
+  .btn { display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 12px; font-weight: 600;
+         background: #FF8A1F; color: #0E1116; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tile { display: flex; flex-direction: column; gap: 6px; min-height: 96px; padding: 16px; background: #1B2129; border: 1px solid #2A323D; border-radius: 14px; }
+  .tile b { font-size: 18px; }
+  .tile span { color: #C9CED6; font-size: 15px; }
+  .warn { background: #3A2410; border-color: #7A3E00; color: #FFD3A8; }
+  .foot { color: #9AA3AE; font-size: 14px; text-align: center; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 12px 8px; border-bottom: 1px solid #2A323D; vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.code { font-family: 'JetBrains Mono', ui-monospace, monospace; color: #FF8A1F; white-space: nowrap; width: 1%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+{% if view == 'denied' %}
+  <div class="top">{{ mark() }}<span class="word">CCX<span>PBX</span></span></div>
+  <div class="card warn">Ez az oldal a CCXPBX-hez rendelt telefonokról érhető el. Ha telefonról látod, ellenőrizd, hogy a készülék
+    fel van-e véve a kezelőfelületen.</div>
+{% else %}
+  {% if view == 'home' %}
+  <div class="top">{{ mark() }}<span class="word">CCX<span>PBX</span></span></div>
+  <div>
+    <h1>{{ phone.label or 'Telefon' }}</h1>
+    <div class="sub">{% if own %}<span class="mono">{{ own }}</span> · {{ phone.lines[0].name }}{% else %}Nincs vonal rendelve{% endif %}</div>
+  </div>
+  {% else %}
+  <div class="top"><a class="back" href="/phone/{{ q }}" aria-label="Vissza">‹</a><h1>{{ title }}</h1></div>
+  {% endif %}
+
+  {% if ami_error %}<div class="card warn">A telefonközpont most nem válaszol. Próbáld újra pár perc múlva.</div>{% endif %}
+
+  {% if view == 'home' %}
+    {% if own %}
+    <a class="card big" href="tel:{{ plan.FC_VM_OWN }}">
+      <div><div class="sub">Hangposta</div><div>{{ 'Új üzenet vár' if vm_new else 'Nincs új üzenet' }}{% if vm_old %} · {{ vm_old }} meghallgatott{% endif %}</div></div>
+      <b>{{ vm_new }}</b>
+    </a>
+    {% endif %}
+    <div class="grid2">
+      <a class="tile" href="/phone/directory{{ q }}"><b>Telefonkönyv</b><span>{{ extensions|selectattr('state', 'ne', 'off')|list|length }} mellék elérhető</span></a>
+      <a class="tile" href="/phone/parked{{ q }}"><b>Parkolt hívások</b><span>{{ parked|length or 'nincs' }}{{ ' várakozik' if parked }}</span></a>
+      <a class="tile" href="/phone/codes{{ q }}"><b>Hasznos kódok</b><span>hangposta, intercom, park</span></a>
+      <a class="tile" href="/phone/system{{ q }}"><b>Rendszer</b><span>{{ server.name }}</span></a>
+    </div>
+    <a class="btn" href="tel:{{ plan.FC_ECHO }}">Hangteszt ({{ plan.FC_ECHO }})</a>
+    <div class="foot">{{ server.name }} · {{ 'kapcsolódva' if not ami_error else 'nem elérhető' }}</div>
+
+  {% elif view == 'directory' %}
+    <div class="list">
+    {% for e in extensions %}
+      {% if e.own %}
+      <div class="item"><span class="dot {{ e.state }}"></span><div class="grow"><div class="name">{{ e.name }}</div><div class="meta">Te</div></div><span class="num">{{ e.num }}</span></div>
+      {% else %}
+      <a class="item" href="tel:{{ e.num }}"><span class="dot {{ e.state }}"></span>
+        <div class="grow"><div class="name">{{ e.name }}</div><div class="meta">{{ e.label }}</div></div><span class="num">{{ e.num }}</span></a>
+      {% endif %}
+    {% else %}
+      <div class="item">Még nincs mellék a telefonkönyvben.</div>
+    {% endfor %}
+    </div>
+    <div class="foot">Koppints egy mellékre a híváshoz · frissül 10 másodpercenként</div>
+
+  {% elif view == 'parked' %}
+    <div class="list">
+    {% for p in parked %}
+      <a class="item" href="tel:{{ p.slot }}"><span class="dot ring"></span>
+        <div class="grow"><div class="name">{{ p.who or p.num or 'Ismeretlen hívó' }}</div><div class="meta"><span class="mono">{{ p.num }}</span>{% if p.secs %} · {{ p.secs }} mp{% endif %}</div></div>
+        <span class="num">{{ p.slot }}</span></a>
+    {% else %}
+      <div class="item">Most nincs parkolt hívás.</div>
+    {% endfor %}
+    </div>
+    <div class="foot">Koppints a hívásra a visszavételhez · parkolás: hívás közben {{ plan.DTMF_PARK }} vagy átkapcsolás a {{ plan.PARK_EXT }}-ra</div>
+
+  {% elif view == 'codes' %}
+    <div class="card"><table>
+      {% for code, desc in codes %}<tr><td class="code">{{ code }}</td><td>{{ desc }}</td></tr>{% endfor %}
+    </table></div>
+
+  {% elif view == 'system' %}
+    <div class="list">
+      <div class="item"><div class="grow"><div class="meta">Telefonközpont</div><div class="name">{{ server.name }}</div></div></div>
+      <div class="item"><div class="grow"><div class="meta">Állapot</div><div class="name">{{ server.meta }}</div></div></div>
+      <div class="item"><div class="grow"><div class="meta">Szerver címe</div><div class="name mono">{{ settings.server_host }}</div></div></div>
+      <div class="item"><div class="grow"><div class="meta">Telefon</div><div class="name">{{ seen.model or 'CCX500' }} · <span class="mono">{{ seen.firmware }}</span></div></div></div>
+      <div class="item"><div class="grow"><div class="meta">MAC / IP</div><div class="name mono">{{ phone.mac }} · {{ seen.ip }}</div></div></div>
+    </div>
+  {% endif %}
+{% endif %}
+</div>
+</body>
+</html>

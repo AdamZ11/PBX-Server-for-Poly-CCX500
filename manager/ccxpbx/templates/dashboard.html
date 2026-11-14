@@ -1,80 +1,103 @@
 {% extends "base.html" %}
+{% block title %}Áttekintés · CCXPBX{% endblock %}
 {% block content %}
-<h1>Áttekintés</h1>
-<div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Asterisk: <span>{{ ami_error or '' }}</span></div>
+<div class="page-head">
+  <div class="row">
+    <h1>Áttekintés</h1>
+    <span id="live-indicator" class="live" title="Az oldal 3 másodpercenként frissül">Élő</span>
+  </div>
+  <a class="btn" href="/extensions/new">+ Új mellék</a>
+</div>
+
+<div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Az Asterisk nem érhető el: <span>{{ ami_error or '' }}</span></div>
 {% if ip_mismatch %}<div class="flash err">A beállított szerver IP ({{ settings.server_host }}) nem ennek a gépnek a címe
-  (a gép címe: {{ ip_mismatch|join(', ') }}). A telefonok így nem érik el a szervert: javítsd a
+  (a gép címe: {{ ip_mismatch|join(', ') }}). A telefonok így nem érik el a szervert. Javítsd a
   <a href="/settings">Beállításokban</a>, és adj a gépnek fix IP-t (DHCP-foglalás a routeren).</div>{% endif %}
-{% if not settings.server_host %}<div class="flash warn">Állítsd be a szerver IP címét a <a href="/settings">Beállításokban</a>!</div>{% endif %}
+{% if not settings.server_host %}<div class="flash warn">Még nincs megadva a szerver IP címe. Állítsd be a <a href="/settings">Beállításokban</a>.</div>{% endif %}
 
 <div class="tiles">
-  <div class="tile"><b id="t-extensions">{{ live.counts.extensions }}</b><span>mellék</span></div>
-  <div class="tile"><b id="t-phones">{{ live.counts.phones }}</b><span>telefon</span></div>
-  <div class="tile"><b id="t-registered">{{ live.counts.registered }}</b><span>regisztrált</span></div>
-  <div class="tile"><b id="t-channels">{{ live.counts.channels }}</b><span>aktív csatorna</span></div>
+  {% for t in live.tiles %}
+  <div class="tile" id="tile-{{ t.id }}"><span>{{ t.label }}</span><b>{{ t.value }}</b><small>{{ t.sub }}</small></div>
+  {% endfor %}
 </div>
 
 <section class="card" id="unknown-section" {% if not live.unknown %}hidden{% endif %}>
-  <h2>Új, még fel nem vett telefonok</h2>
-  <p class="muted">Ezek a készülékek már letöltötték a provisioning konfigurációt, de nincs hozzájuk mellék rendelve.</p>
-  <table>
+  <h2>Új telefonok</h2>
+  <p class="muted">Ezek a készülékek már letöltötték a konfigurációt, de még nincs hozzájuk mellék rendelve.</p>
+  <div class="scroll-x"><table>
     <thead><tr><th>MAC</th><th>IP</th><th>Modell</th><th>Firmware</th><th>Utoljára</th><th></th></tr></thead>
     <tbody id="unknown-body">
     {% for d in live.unknown %}
-    <tr><td class="mono">{{ d.mac }}</td><td>{{ d.ip }}</td><td>{{ d.model }}</td><td>{{ d.firmware }}</td>
-        <td>{{ d.last_seen }}</td><td><a class="btn" href="/phones/new?mac={{ d.mac }}">Felvétel</a></td></tr>
+    <tr><td class="mono">{{ d.mac }}</td><td class="mono">{{ d.ip }}</td><td>{{ d.model }}</td><td class="mono">{{ d.firmware }}</td>
+        <td class="mono">{{ d.last_seen }}</td><td class="right"><a class="btn secondary" href="/phones/new?mac={{ d.mac }}">Felvétel</a></td></tr>
     {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </section>
+
+<div class="row wrap" style="align-items: flex-start; gap: 24px">
+  <section class="card" style="flex: 2 1 520px; min-width: 0">
+    <h2>Élő hívások</h2>
+    <div class="scroll-x"><table>
+      <thead><tr><th>Csatorna</th><th>Hívó</th><th>Cél</th><th>Idő</th><th>Állapot</th></tr></thead>
+      <tbody id="ch-body">
+      {% for ch in live.channels %}
+      <tr><td class="mono small">{{ ch.channel }}</td><td>{{ ch.cid_name }} <span class="mono muted">{{ ch.cid_num }}</span></td>
+          <td class="mono">{{ ch.exten }}</td><td class="mono">{{ ch.duration }}</td>
+          <td><span class="status"><span class="dot {{ 'busy' if ch.state == 'Up' else 'ring' }}"></span>{{ 'Beszélgetés' if ch.state == 'Up' else ch.state }}</span></td></tr>
+      {% else %}<tr><td colspan="5" class="muted">Most nincs folyamatban lévő hívás.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="card" style="flex: 1 1 300px; min-width: 0">
+    <h2>Mellékek</h2>
+    <div id="ext-list">
+    {% for e in live.extensions %}
+    <div class="row" style="min-height: 44px; border-bottom: 1px solid var(--ccx-divider); margin: 0">
+      <a class="mono" href="/extensions/{{ e.num }}" style="width: 48px">{{ e.num }}</a>
+      <span style="flex: 1">{{ e.name }}</span>
+      <span class="status small muted"><span class="dot {{ e.state }}"></span>{{ e.label }}</span>
+    </div>
+    {% else %}<p class="muted">Még nincs mellék. <a href="/extensions/new">Vegyél fel egyet.</a></p>{% endfor %}
+    </div>
+  </section>
+</div>
 
 <section class="card">
   <h2>Regisztrációk</h2>
-  <table>
+  <div class="scroll-x"><table>
     <thead><tr><th>Mellék</th><th>Telefon</th><th>Állapot</th><th>Kontakt</th><th>User-Agent</th><th>RTT</th></tr></thead>
     <tbody id="reg-body">
     {% for c in live.contacts %}
     <tr>
-      <td>{{ c.endpoint }}</td>
+      <td class="mono">{{ c.endpoint }}</td>
       <td>{% if c.mac %}<a href="/phones/{{ c.mac }}" class="mono">{{ c.mac }}</a>{% endif %}</td>
-      <td><span class="pill {{ 'ok' if c.status in ('Reachable','NonQualified','Created') else 'err' }}">{{ c.status }}</span></td>
+      <td><span class="status"><span class="dot {{ 'free' if c.status in ('Reachable','NonQualified','Created') else 'off' }}"></span>{{ c.status }}</span></td>
       <td class="mono small">{{ c.uri }}</td>
       <td class="small">{{ c.ua }}</td>
-      <td>{% if c.rtt %}{{ c.rtt }} ms{% endif %}</td>
+      <td class="mono">{% if c.rtt %}{{ c.rtt }} ms{% endif %}</td>
     </tr>
-    {% else %}<tr><td colspan="6" class="muted">Nincs regisztrált készülék.</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="6" class="muted">Még egy telefon sem regisztrált.</td></tr>{% endfor %}
     </tbody>
-  </table>
-</section>
-
-<section class="card">
-  <h2>Aktív csatornák</h2>
-  <table>
-    <thead><tr><th>Csatorna</th><th>Hívó</th><th>Cél</th><th>Állapot</th><th>Időtartam</th></tr></thead>
-    <tbody id="ch-body">
-    {% for ch in live.channels %}
-    <tr><td class="mono small">{{ ch.channel }}</td><td>{{ ch.cid_name }} &lt;{{ ch.cid_num }}&gt;</td>
-        <td>{{ ch.exten }}</td><td>{{ ch.state }}</td><td>{{ ch.duration }}</td></tr>
-    {% else %}<tr><td colspan="5" class="muted">Nincs aktív hívás.</td></tr>{% endfor %}
-    </tbody>
-  </table>
+  </table></div>
 </section>
 
 <section class="card" id="regs-section" {% if not live.regs %}hidden{% endif %}>
-  <h2>Trönk regisztrációk</h2>
-  <table>
+  <h2>Trunk regisztrációk</h2>
+  <div class="scroll-x"><table>
     <thead><tr><th>Név</th><th>Szerver</th><th>Állapot</th></tr></thead>
     <tbody id="regs-body">
-    {% for r in live.regs %}<tr><td>{{ r.name }}</td><td>{{ r.server }}</td><td>{{ r.status }}</td></tr>{% endfor %}
+    {% for r in live.regs %}<tr><td>{{ r.name }}</td><td class="mono">{{ r.server }}</td><td>{{ r.status }}</td></tr>{% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </section>
 
 <section class="card">
-  <h2>Rendszer</h2>
-  <div class="row">
-    <form method="post" action="/resync-all"><button>Minden telefon szinkronizálása</button></form>
-    <a class="btn secondary" href="/asterisk/preview">Generált Asterisk konfig</a>
+  <h2>Karbantartás</h2>
+  <div class="row wrap">
+    <form method="post" action="/resync-all"><button class="secondary">Minden telefon szinkronizálása</button></form>
+    <a class="btn secondary" href="/asterisk/preview">Generált Asterisk konfiguráció</a>
   </div>
 </section>
 {% endblock %}
