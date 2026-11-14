@@ -32,11 +32,13 @@
     forward: P(PHONE + "M14 3h3V0l5 4.5L17 9V6h-3z"),
     directories: P("M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm1 4v2h10V6zm0 4v2h10v-2zm0 4v2h6v-2z"),
     application: P("M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z"),
+    bluetooth: P("M11 2h1l6 5-4.6 5 4.6 5-6 5h-1v-7.6L6.7 18.7 5.3 17.3 10.6 12 5.3 6.7l1.4-1.4L11 9.6zm2 3.4v4.2l2.4-2.1zm0 9v4.2l2.4-2.1z"),
+    paging: P("M8 2h2v3h6a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm4 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"),
     recentCalls: P("M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-1 5v6l5 3 1-1.6-4-2.4V7z"),
     line: P(PHONE),
     blf: P("M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c4.4 0 8 2 8 4.5V20H4v-1.5C4 16 7.6 14 12 14z"),
     park: '<span class="ccx-p">P</span>',
-    speeddial: P("M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.5 5.8 21.2l1.6-7L2 9.5l7.1-.6z"),
+    speeddial: P("M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c4.4 0 8 2 8 4.5V20H4v-1.5C4 16 7.6 14 12 14z"),
     unassigned: "",
     plus: P("M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"),
   };
@@ -52,24 +54,33 @@
   let dirty = false;
   const extName = Object.fromEntries(data.exts.map((e) => [e.ext, e.name]));
   const ownExts = new Set(data.lines.map((l) => l.ext));
-  const icons = data.homeIcons.filter((i) => i.key !== "application" || data.microbrowser);
+  const icons = data.homeIcons.filter((i) => (i.key !== "application" || data.microbrowser) && (i.key !== "paging" || data.paging));
   const toggleable = icons.filter((i) => !i.fixed);
+  // Applications (the CCXPBX page) is also reachable from the ☰ menu, so it neither counts nor gets hidden automatically.
+  // Bluetooth / Paging only fill free places, so they do not count either.
+  const counted = (i) => i.key !== "application" && !i.fill;
+  const visibleCount = () => icons.filter((i) => counted(i) && !hidden.has(i.key)).length;
+  // The phone shows six icons at most; anything beyond the first six would never appear, so it starts hidden.
+  (function limitIcons() {
+    let shown = 0;
+    icons.filter(counted).forEach((i) => { if (!hidden.has(i.key)) { shown++; if (shown > data.iconsOnScreen && !i.fixed) hidden.add(i.key); } });
+  })();
 
   function touch() { dirty = true; $("dirty").hidden = false; }
 
   function lineOf(k) { return data.lines.find((l) => String(l.idx) === String(k.value)) || data.lines[0]; }
   function keyText(k) {
-    if (k.type === "line") { const l = lineOf(k); return k.label || (l ? `${l.ext} ${l.name}` : "Vonal"); }
+    if (k.type === "line") { const l = lineOf(k); return l ? `${l.ext} ${l.name}` : "Vonal"; }
     if (k.type === "blf") return k.label || extName[k.value] || k.value || "BLF";
     if (k.type === "park") return k.label || "Park";
-    if (k.type === "speeddial") return k.label || k.value || "Gyorshívó";
+    if (k.type === "speeddial") return k.label || extName[k.value] || k.value || "Gyorshívó";
     return "";
   }
   function keySub(k) {
     if (k.type === "line") { const l = lineOf(k); return l ? l.ext : ""; }
     if (k.type === "blf") return data.parkSlots.includes(k.value) ? `Park ${k.value}` : k.value;
     if (k.type === "park") return data.parkExt;
-    if (k.type === "speeddial") return k.label ? k.value : "";
+    if (k.type === "speeddial") return k.value;
     return "";
   }
   function keyState(k) {
@@ -284,6 +295,7 @@
       s.append(g1, g2);
       box.append(el("label", {}, "Kit figyeljen", s));
     } else if (k.type === "speeddial") {
+      box.append(el("p", { class: "muted small", text: "A CCX500 a gyorshívót kedvencként mutatja: a telefonkönyvbe kerül, és a vonal mellett jelenik meg. A sorrendjük a gombok sorrendje." }));
       box.append(el("label", {}, "Hívószám", el("input", { value: k.value, placeholder: "pl. 112", inputmode: "tel", pattern: "[0-9*#+]{1,32}",
         oninput: (e) => { k.value = e.target.value.trim(); rerender(); } })));
     } else if (k.type === "park") {
@@ -291,7 +303,9 @@
     } else {
       box.append(el("p", { class: "muted small", text: "Üres hely: a telefonon nem jelenik meg semmi, de a helyét megtartja." }));
     }
-    if (k.type !== "unassigned") {
+    if (k.type === "line") {
+      box.append(el("p", { class: "muted small", text: "A vonalgombon a telefon mindig a mellék számát és nevét írja ki (a mellék nevét a Mellékek oldalon módosíthatod)." }));
+    } else if (k.type !== "unassigned") {
       box.append(el("label", {}, "Felirat", el("input", { value: k.label, maxlength: "24", placeholder: keyText({ ...k, label: "" }),
         oninput: (e) => { k.label = e.target.value; rerender(); } }), el("small", { text: "Üresen hagyva a telefon a fenti szürke szöveget írja ki." })));
     }
@@ -322,11 +336,16 @@
 
     box.append(el("h3", { text: "Ikonok a kezdőképernyőn" }));
     const list = el("div", { class: "icon-toggles" });
-    icons.forEach((ic) => list.append(el("label", { class: "check" },
-      el("input", { type: "checkbox", checked: !hidden.has(ic.key), disabled: !!ic.fixed,
-        onchange: (e) => { e.target.checked ? hidden.delete(ic.key) : hidden.add(ic.key); touch(); renderScreen(); } }),
-      ` ${ic.desc}${ic.fixed ? " (mindig látszik)" : ""}`)));
-    list.append(el("small", { class: "muted", text: `A telefon a kezdőképernyőn az első ${data.iconsOnScreen} látható ikont mutatja, a többit a ☰ menüben éred el.` }));
+    const full = visibleCount() >= data.iconsOnScreen;
+    list.append(el("div", { class: `icon-count${full ? " full" : ""}`, text: `${visibleCount()} / ${data.iconsOnScreen} ikon látszik` }));
+    icons.forEach((ic) => {
+      const on = !hidden.has(ic.key);
+      list.append(el("label", { class: `check${!on && full && counted(ic) ? " blocked" : ""}` },
+        el("input", { type: "checkbox", checked: on, disabled: !!ic.fixed || (!on && full && counted(ic)),
+          onchange: (e) => { e.target.checked ? hidden.delete(ic.key) : hidden.add(ic.key); touch(); render(); } }),
+        ` ${ic.desc}${ic.fill ? " (üres helyre kerül)" : ic.fixed ? " (mindig látszik)" : ""}`));
+    });
+    list.append(el("small", { class: "muted", text: `A telefon egyszerre ${data.iconsOnScreen} ikont tud mutatni, ezért többet nem lehet bekapcsolni. Ha másikat szeretnél, előbb kapcsolj ki egyet.` }));
     if (!data.microbrowser) list.append(el("small", { class: "muted", text: "Az Alkalmazások ikon a Beállításokban kapcsolható be (CCXPBX oldal)." }));
     box.append(list, el("p", { class: "muted small", text: "Az ikonok sorrendjét és feliratát a telefon szoftvere rögzíti, ezért nem húzhatók; csak elrejteni lehet őket." }));
 
@@ -397,10 +416,10 @@
     render();
   }));
 
-  $("screen-form").addEventListener("submit", (e) => {
+  $("screen-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
     const bad = keys.findIndex((k) => (k.type === "speeddial" || k.type === "blf") && !/^[0-9*#+]{1,32}$/.test(k.value));
     if (bad >= 0) {
-      e.preventDefault();
       mode = "edit"; selected = { key: bad }; page = bad > 1 ? 1 : page; render(); focusInspector();
       alert(`${bad + 1}. gomb: adj meg egy hívószámot.`);
       return;
@@ -414,8 +433,25 @@
                  el("input", { type: "hidden", name: `key_value_${n}`, value: k.value }),
                  el("input", { type: "hidden", name: `key_label_${n}`, value: k.label }));
     });
-    dirty = false;
+    const form = $("screen-form"), btn = form.querySelector("button:not([type=button])");
+    btn.disabled = true;
+    showResult([["info", "Mentés és küldés a telefonra…"]]);
+    try {
+      const r = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { Accept: "application/json" } });
+      if (r.redirected && r.url.includes("/login")) { location.href = "/login"; return; }
+      const d = await r.json();
+      if (d.ok) { dirty = false; $("dirty").hidden = true; }
+      showResult(d.messages || []);
+      render();
+    } catch (_) {
+      showResult([["err", "A mentés nem sikerült: a szerver nem válaszolt."]]);
+    } finally { btn.disabled = false; }
   });
+
+  function showResult(messages) {
+    const box = $("save-result");
+    box.replaceChildren(...messages.map(([kind, msg]) => el("div", { class: `flash ${kind === "info" ? "" : kind}`, text: msg })));
+  }
   window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && selected) { selected = null; render(); } });
 

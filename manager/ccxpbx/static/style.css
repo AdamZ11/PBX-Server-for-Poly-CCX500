@@ -201,6 +201,11 @@ details.raw pre { margin-top: 12px; }
 .ccx-inspector label.check { flex-direction: row; align-items: center; gap: 8px; }
 .insp-head { display: flex; justify-content: space-between; align-items: center; }
 .icon-toggles { display: flex; flex-direction: column; gap: 4px; }
+.icon-count { font-size: 13px; font-weight: 600; color: var(--ccx-slate); }
+.icon-count.full { color: #7A3E00; }
+.icon-toggles label.blocked { color: var(--ccx-gray-300); }
+.save-result { margin: 8px 0 0; }
+.save-result .flash { margin: 0 0 6px; }
 .seg { display: flex; flex-wrap: wrap; gap: 4px; }
 .seg button { min-height: 34px; padding: 0 12px; font-size: 13px; background: var(--ccx-white); color: var(--ccx-ink); border: 1px solid var(--ccx-gray-300); font-weight: 500; }
 .seg button.on { background: var(--ccx-ink); color: var(--ccx-paper); border-color: var(--ccx-ink); }

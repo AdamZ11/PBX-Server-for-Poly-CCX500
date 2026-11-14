@@ -519,10 +519,12 @@ def phone_screen(mac: str, request: Request, conn=Depends(get_db), _=Depends(req
         "siteWallpaper": settings.get("wallpaper", ""),
         "wallpapers": wallpapers.available(),
         "clock24": settings.get("clock_24h", "1") == "1",
-        "homeIcons": [{"key": k, "label": l, "desc": d, "fixed": k in plan.HOME_ICON_FIXED} for k, l, d in plan.HOME_ICONS],
+        "homeIcons": [{"key": k, "label": l, "desc": d, "fixed": k in plan.HOME_ICON_FIXED, "fill": k in plan.HOME_ICON_FILL}
+                      for k, l, d in plan.HOME_ICONS],
         "iconsOnScreen": plan.HOME_ICONS_ON_SCREEN,
         "homeHidden": [k for k in (phone.get("home_hidden") or "").split(",") if k],
         "microbrowser": settings.get("microbrowser", "1") == "1",
+        "paging": settings.get("paging_enabled", "1") == "1",
     }
     return render(request, conn, "phone_screen.html", phone=phone, editor=editor, key_types=plan.KEY_TYPES)
 
@@ -561,9 +563,12 @@ async def phone_screen_save(mac: str, request: Request, conn=Depends(get_db), _=
     if not phone:
         return redirect("/phones")
     form = await request.form()
+    wants_json = "application/json" in request.headers.get("accept", "")
     try:
         keys = parse_keys(form, len(phone["lines"]))
     except plan.ValidationError as exc:
+        if wants_json:
+            return JSONResponse({"ok": False, "messages": [["err", str(exc)]]})
         flash(request, str(exc), "err")
         return redirect(f"/phones/{mac}/screen")
     wallpaper = fval(form, "wallpaper")
@@ -575,6 +580,9 @@ async def phone_screen_save(mac: str, request: Request, conn=Depends(get_db), _=
     conn.executemany("INSERT INTO phone_keys(mac, pos, type, value, label) VALUES (?,?,?,?,?)",
                      [(mac, *key) for key in keys])
     await run_in_threadpool(apply_now, request, conn, mac)
+    if wants_json:   # the editor saves in place: hand over the messages instead of a reload
+        messages = request.session.pop("flash", [])
+        return JSONResponse({"ok": True, "messages": messages or [["ok", "Mentve."]]})
     return redirect(f"/phones/{mac}/screen")
 
 

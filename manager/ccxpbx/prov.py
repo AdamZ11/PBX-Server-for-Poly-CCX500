@@ -57,19 +57,7 @@ def _seen(conn, request: Request, name: str) -> str | None:
     return mac
 
 
-_ITEM_RE = re.compile(r"<item>.*?</item>", re.S)
-_CT_RE = re.compile(r"<ct>\s*([^<]*?)\s*</ct>")
-_SD_RE = re.compile(r"\s*<sd>[^<]*</sd>")
-
-
-def strip_extension_speed_dials(xml: str, exts: set[str]) -> str:
-    """Drop <sd> from contacts that are PBX extensions. Older versions numbered every extension, and PolyOS
-    shows speed dial contacts as favourites next to the line keys. Other contacts keep their speed dial."""
-    def fix(m):
-        item = m.group(0)
-        ct = _CT_RE.search(item)
-        return _SD_RE.sub("", item) if ct and ct.group(1) in exts else item
-    return _ITEM_RE.sub(fix, xml)
+_PHONE_DIR_RE = re.compile(r"^([0-9a-f]{12})-directory\.xml$")
 
 
 @router.api_route("/prov/{path:path}", methods=["GET", "HEAD"])
@@ -92,6 +80,14 @@ def prov_get(path: str, request: Request, conn=Depends(get_db)):
         return _xml(poly.render_master(settings, mac if known else None))
     if lname == "000000000000-directory.xml" and sub in ("", "contacts"):
         return _xml(poly.render_directory(db.snapshot(conn)))
+    dir_match = _PHONE_DIR_RE.match(lname)
+    if sub == "contacts" and dir_match:
+        # the phone's own directory: extensions + its speed dial keys as favourites + contacts added on the phone
+        phone = db.load_phone(conn, dir_match.group(1))
+        if phone:
+            f = config.PROV_DIR / sub / name
+            uploaded = f.read_text(encoding="utf-8", errors="replace") if f.is_file() else ""
+            return _xml(poly.render_directory(db.snapshot(conn), phone, uploaded))
     if sub == "ccx":
         if lname == "site.cfg":
             return _xml(poly.render_cfg(poly.site_params(db.snapshot(conn)), "ccxpbx site config"))
@@ -104,9 +100,6 @@ def prov_get(path: str, request: Request, conn=Depends(get_db)):
     if sub in (config.FIRMWARE_DIR, *config.UPLOAD_DIRS):
         f = config.PROV_DIR / sub / name
         if f.is_file():
-            if sub == "contacts" and lname.endswith("-directory.xml"):
-                exts = {r["ext"] for r in conn.execute("SELECT ext FROM extensions")}
-                return _xml(strip_extension_speed_dials(f.read_text(encoding="utf-8", errors="replace"), exts))
             return FileResponse(f)
     return PlainTextResponse("Not found", status_code=404)
 

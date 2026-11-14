@@ -40,8 +40,14 @@ HOME_ICONS = [
     ("forward", "Forward", "Átirányítás"),
     ("directories", "Directories", "Telefonkönyvek"),
     ("application", "Applications", "Alkalmazások (CCXPBX oldal)"),
+    # fill-ins: not shown while six other icons are visible, they take the free places once icons are hidden
+    ("bluetooth", "Bluetooth", "Bluetooth"),
+    ("paging", "Paging", "Csoportos hangosbemondás (Paging)"),
 ]
-HOME_ICON_FIXED = {"recentCalls"}   # shown by PolyOS 9.5 but no known homeScreen.* switch
+# Verified on a CCX500 with PolyOS 9.5.1: these stay on the home screen whatever homeScreen.*.enable says
+# (homeScreen.newCall.enable=0 is accepted but Place a Call remains). Paging only when PTT/paging is on.
+HOME_ICON_FIXED = {"newCall", "recentCalls", "bluetooth", "paging"}
+HOME_ICON_FILL = {"bluetooth", "paging"}
 HOME_ICON_KEYS = [k for k, _, _ in HOME_ICONS if k not in HOME_ICON_FIXED]
 HOME_ICONS_ON_SCREEN = 6            # PolyOS 9.5.1 shows the first six visible icons, the rest via the ☰ menu
 

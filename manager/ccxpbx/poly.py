@@ -374,22 +374,65 @@ def phone_params(snapshot: dict, phone: dict) -> dict:
     return p
 
 
-def render_directory(snapshot: dict) -> str:
-    out = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>', "<directory>", "  <item_list>"]
-    # No <sd> (speed dial index): PolyOS shows speed dial contacts as favourites among the line keys,
-    # which put every extension on the home screen. Keys come only from the home screen editor.
+def _dir_item(fn: str, ln: str, ct: str, sd: int | None = None) -> str:
+    sd_tag = f"<sd>{sd}</sd>" if sd else ""
+    return f"    <item><fn>{escape(fn)}</fn><ln>{escape(ln)}</ln><ct>{escape(ct)}</ct>{sd_tag}<bw>0</bw><bb>0</bb></item>"
+
+
+def _split_name(name: str) -> tuple[str, str]:
+    parts = name.rsplit(" ", 1)
+    return (parts[0], parts[1]) if len(parts) == 2 else (name, "")
+
+
+_ITEM_RE = re.compile(r"<item>.*?</item>", re.S)
+_CT_RE = re.compile(r"<ct>\s*([^<]*?)\s*</ct>")
+_SD_RE = re.compile(r"<sd>\s*(\d+)\s*</sd>")
+
+
+def render_directory(snapshot: dict, phone: dict | None = None, uploaded: str = "") -> str:
+    """The contact directory a phone downloads.
+
+    PolyOS on the CCX500 shows contacts with a speed dial index (<sd>) as favourites next to the line keys
+    (verified on 9.5.1; EFK speed dial line keys are not shown at all). So:
+      * extensions are listed without <sd>, they must not turn into keys by themselves;
+      * with a phone, its "speed dial" keys become favourites, numbered in key order;
+      * contacts the user added on the phone (its uploaded copy) are kept, their favourites after ours.
+    """
+    exts = {e["ext"]: e for e in snapshot["extensions"]}
+    favourites = []   # (number, label) in key order
+    if phone:
+        for key in phone.get("keys", []):
+            if key["type"] == "speeddial" and key["value"]:
+                favourites.append((key["value"], key.get("label") or ""))
+    fav_sd = {}
+    items = []
+    for n, (number, label) in enumerate(favourites, 1):
+        ext = exts.get(number)
+        name = label or (ext["name"] if ext else number)
+        fav_sd.setdefault(number, (n, name))
     for ext in snapshot["extensions"]:
-        if not ext["in_directory"]:
+        if not ext["in_directory"] and ext["ext"] not in fav_sd:
             continue
-        parts = ext["name"].rsplit(" ", 1)
-        fn, ln = (parts[0], parts[1]) if len(parts) == 2 else (ext["name"], "")
-        out.append(
-            "    <item>"
-            f"<fn>{escape(fn)}</fn><ln>{escape(ln)}</ln><ct>{escape(ext['ext'])}</ct>"
-            "<bw>0</bw><bb>0</bb>"
-            "</item>"
-        )
-    out += ["  </item_list>", "</directory>"]
+        sd, name = fav_sd.pop(ext["ext"], (None, ext["name"]))
+        items.append(_dir_item(*_split_name(name), ext["ext"], sd))
+    for number, (sd, name) in fav_sd.items():   # favourites that are not extensions (external numbers)
+        items.append(_dir_item(*_split_name(name), number, sd))
+
+    # contacts added on the phone: keep them, minus extensions and our favourites, renumbering their <sd>
+    next_sd = len(favourites) + 1
+    taken = set(exts) | {n for n, _ in favourites}
+    for raw in _ITEM_RE.findall(uploaded or ""):
+        ct = _CT_RE.search(raw)
+        if not ct or ct.group(1) in taken:
+            continue
+        taken.add(ct.group(1))
+        if _SD_RE.search(raw):
+            raw = _SD_RE.sub(f"<sd>{next_sd}</sd>", raw, count=1)
+            next_sd += 1
+        items.append("    " + raw.strip())
+
+    out = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>', "<directory>", "  <item_list>", *items,
+           "  </item_list>", "</directory>"]
     return "\n".join(out) + "\n"
 
 

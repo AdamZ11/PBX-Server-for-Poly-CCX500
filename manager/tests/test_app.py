@@ -218,6 +218,9 @@ def test_home_screen_editor(client):
     assert "CCXPBX_hatter_02_kapcsolotabla.jpg" in cfg
     assert 'homeScreen.redial.enable="0"' in cfg and 'homeScreen.settings.enable="0"' in cfg and "bogus" not in cfg
     assert 'homeScreen.messages.enable' not in cfg   # visible icons keep the phone default
+    # the speed dial key reaches the phone as a favourite in its own directory
+    d = prov(client, f"/prov/contacts/{mac}-directory.xml").text
+    assert "<ct>112</ct><sd>1</sd>" in d and "<ct>2001</ct><bw>" in d
 
     # an invalid number is rejected and nothing changes
     r = client.post(f"/phones/{mac}/screen", data={"key_type_1": "speeddial", "key_value_1": "abc"}, follow_redirects=False)
@@ -317,11 +320,32 @@ def test_polyrest_config_get_formats(monkeypatch):
 
 def test_directory_has_no_speed_dials():
     from ccxpbx import poly
-    from ccxpbx.prov import strip_extension_speed_dials
-    xml = poly.render_directory({"extensions": [{"ext": "2001", "name": "Kiss Anna", "in_directory": 1}]})
+    snap = {"extensions": [{"ext": "2001", "name": "Kiss Anna", "in_directory": 1},
+                           {"ext": "2002", "name": "Nagy Béla", "in_directory": 1}]}
+    xml = poly.render_directory(snap)
     assert "<ct>2001</ct>" in xml and "<sd>" not in xml
-    # a directory the phone uploaded earlier: extension contacts lose <sd>, an external contact keeps it
+
+    # a phone's own directory: its speed dial keys become favourites in key order, extensions stay plain,
+    # contacts added on the phone are kept with their favourite renumbered after ours
+    phone = {"keys": [{"type": "line", "value": "1", "label": ""},
+                      {"type": "speeddial", "value": "112", "label": "Segély"},
+                      {"type": "speeddial", "value": "2002", "label": ""}]}
     uploaded = ("<directory><item_list><item><fn>Anna</fn><ct>2001</ct><sd>1</sd></item>"
-                "<item><fn>Szerviz</fn><ct>0612345678</ct><sd>5</sd></item></item_list></directory>")
-    out = strip_extension_speed_dials(uploaded, {"2001", "2002"})
-    assert "<ct>2001</ct></item>" in out and "<sd>5</sd>" in out and "<sd>1</sd>" not in out
+                "<item><fn>Szerviz</fn><ct>0612345678</ct><sd>1</sd></item></item_list></directory>")
+    xml = poly.render_directory(snap, phone, uploaded)
+    assert "<ct>2001</ct><bw>" in xml                                   # extension, no favourite
+    assert "<ln>Béla</ln><ct>2002</ct><sd>2</sd>" in xml                 # speed dial to an extension
+    assert "<fn>Segély</fn><ln></ln><ct>112</ct><sd>1</sd>" in xml       # external speed dial
+    assert "<ct>0612345678</ct><sd>3</sd>" in xml and xml.count("<ct>2001</ct>") == 1
+
+
+def test_home_screen_save_json(client):
+    login(client)
+    mac = "0004f2aabbcc"
+    r = client.post(f"/phones/{mac}/screen", headers={"Accept": "application/json"},
+                    data={"wallpaper": "", "home_hidden": "redial", "key_type_1": "line", "key_value_1": "1"})
+    d = r.json()
+    assert r.status_code == 200 and d["ok"] and d["messages"]
+    r = client.post(f"/phones/{mac}/screen", headers={"Accept": "application/json"},
+                    data={"key_type_1": "speeddial", "key_value_1": "x"})
+    assert r.json() == {"ok": False, "messages": [["err", r.json()["messages"][0][1]]]} and "hívószám" in r.json()["messages"][0][1]
