@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card narrow">
+  <h1>CCX PBX bejelentkezés</h1>
+  <form method="post" action="/login" class="stack">
+    <label>Felhasználó <input name="username" value="admin" autocomplete="username" required></label>
+    <label>Jelszó <input name="password" type="password" autocomplete="current-password" required autofocus></label>
+    <button>Belépés</button>
+  </form>
+</div>
+{% endblock %}

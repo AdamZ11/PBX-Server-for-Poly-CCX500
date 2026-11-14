@@ -1,0 +1,14 @@
+; Asterisk Manager Interface - local only, used by the ccxpbx manager
+[general]
+enabled=yes
+port=5038
+bindaddr=127.0.0.1
+displayconnects=no
+
+[ccxpbx]
+secret=@AMI_SECRET@
+deny=0.0.0.0/0.0.0.0
+permit=127.0.0.1/255.255.255.255
+read=system,call,agent,user,config,reporting,dialplan
+write=system,call,command,reporting,config,originate
+writetimeout=5000

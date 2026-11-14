@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% macro text(key, label, help='', type='text') -%}
+<label>{{ label }} <input name="{{ key }}" type="{{ type }}" value="{{ settings[key] }}">{% if help %}<small>{{ help }}</small>{% endif %}</label>
+{%- endmacro %}
+{% macro check(key, label) -%}
+<label class="check"><input type="checkbox" name="{{ key }}" value="1" {{ 'checked' if settings[key] == '1' }}> {{ label }}</label>
+{%- endmacro %}
+{% macro select(key, label, options) -%}
+<label>{{ label }} <select name="{{ key }}">{% for v, t in options %}<option value="{{ v }}" {{ 'selected' if settings[key] == v }}>{{ t }}</option>{% endfor %}</select></label>
+{%- endmacro %}
+{% block content %}
+<h1>Beállítások</h1>
+<form method="post" action="/settings">
+<section class="card grid">
+  <h2 class="full">Szerver és SIP</h2>
+  {{ text('server_host', 'Szerver IP / DNS név', 'Ezen a címen éri el a telefon a SIP-et és a provisioningot') }}
+  {{ text('http_port', 'Provisioning HTTP port') }}
+  {{ select('sip_transport', 'SIP transport', [('udp','UDP'),('tcp','TCP'),('tls','TLS + SRTP (titkosított)')]) }}
+  {{ text('sip_port', 'SIP port (UDP/TCP)') }}
+  {{ text('tls_port', 'SIP TLS port') }}
+  {{ text('reg_expires', 'Regisztráció lejárata (mp)') }}
+  {{ text('codecs', 'Kodekek prioritási sorrendben', 'opus, g722, alaw, ulaw, g729 - vesszővel. Ajánlott: g722,alaw,ulaw') }}
+  {{ text('tone_zone', 'Asterisk hangjelzés zóna', 'hu, de, uk, us ...') }}
+  {{ text('timezone_name', 'Időzóna (Asterisk)', 'pl. Europe/Budapest') }}
+  {{ text('external_ip', 'Publikus IP (NAT mögötti trönkhöz)') }}
+  {{ text('local_net', 'Helyi hálózat(ok)', 'pl. 192.168.1.0/24 - NAT esetén kötelező') }}
+  <label>Alapértelmezett bejövő cél <input name="inbound_default" value="{{ settings.inbound_default }}" placeholder="pl. 6000"></label>
+</section>
+
+<section class="card grid">
+  <h2 class="full">Provisioning</h2>
+  <p class="full muted">Provisioning URL a telefonnak / DHCP 66 vagy 160 opcióba:
+     <code>http://{{ settings.prov_user }}:{{ settings.prov_password }}@{{ prov_url[7:] }}</code></p>
+  {{ select('prov_auth', 'Hitelesítés', [('digest','HTTP Digest (ajánlott)'),('basic','HTTP Basic'),('none','Nincs (csak teszthez!)')]) }}
+  {{ text('prov_user', 'Provisioning felhasználó') }}
+  {{ text('prov_password', 'Provisioning jelszó') }}
+  {{ check('lock_prov_server', 'Provisioning szerver rögzítése a telefonban (device.prov.*)') }}
+  {{ check('prov_polling', 'Éjszakai automatikus konfig ellenőrzés') }}
+  {{ text('prov_polling_time', 'Ellenőrzés időpontja (ÓÓ:PP)') }}
+  <label>Telepítendő firmware <select name="firmware_file"><option value="">- nincs frissítés -</option>
+    {% for f in firmware %}<option {{ 'selected' if settings.firmware_file == f }}>{{ f }}</option>{% endfor %}</select>
+    <small>A telefon csak akkor frissít, ha a fájl verziója eltér a futótól.</small></label>
+</section>
+
+<section class="card grid">
+  <h2 class="full">Telefon alapbeállítások (minden CCX500)</h2>
+  {{ text('phone_admin_password', 'Telefon admin jelszó', 'Webfelület + REST API; ezzel kezeli a szerver a telefont') }}
+  {{ text('phone_user_password', 'Telefon user jelszó', 'üres = nem változtat') }}
+  {{ text('ntp_server', 'NTP szerver') }}
+  {{ text('gmt_offset', 'GMT eltolás (mp)', 'Magyarország: 3600') }}
+  {{ select('dst_rule', 'Nyári időszámítás', [('eu','EU'),('us','USA'),('none','nincs')]) }}
+  {{ text('language', 'Telefon nyelve', 'pl. English_United_Kingdom, German_Germany - üres = gyári') }}
+  {{ check('clock_24h', '24 órás kijelzés') }}
+  {{ check('rest_api', 'REST API (távoli kezelés) engedélyezése') }}
+  {{ check('web_ui', 'Telefon webes konfigurációs felülete') }}
+  {{ check('softkey_park', '"Park" gomb hívás közben (#72)') }}
+  {{ check('softkey_record', '"Felvétel" gomb hívás közben (*1)') }}
+  {{ check('intercom_unmute', 'Intercom: a hívott mikrofonja be van kapcsolva') }}
+  {{ check('paging_enabled', 'Multicast csoportos hangosbemondás (PTT/Paging)') }}
+  {{ text('paging_address', 'Paging multicast cím') }}
+  {{ text('paging_port', 'Paging port') }}
+  <label class="full">Digit map <input name="digitmap" value="{{ settings.digitmap }}" class="mono" placeholder="{{ auto_digitmap }}">
+    <small>Üresen hagyva automatikus a számozási tervből: <code>{{ auto_digitmap }}</code></small></label>
+  <label class="full">Egyedi Poly paraméterek minden telefonra (<code>kulcs=érték</code> soronként)
+    <textarea name="site_overrides" rows="6" class="mono">{{ settings.site_overrides }}</textarea></label>
+</section>
+<div class="row"><button>Beállítások mentése</button></div>
+</form>
+
+<section class="card">
+  <h2>Firmware feltöltése</h2>
+  <form method="post" action="/settings/firmware" enctype="multipart/form-data" class="row">
+    <input type="file" name="file" required accept=".ld,.zip,.bin"><button>Feltöltés</button>
+  </form>
+  <p class="muted small">A Poly oldaláról letöltött CCX500 OpenSIP (UC Software / PolyOS) .sip.ld fájlt töltsd fel.</p>
+</section>
+
+<section class="card">
+  <h2>Admin jelszó</h2>
+  <form method="post" action="/settings/admin-password" class="row wrap">
+    <input type="password" name="new_password" placeholder="új jelszó (min. 10)" required minlength="10" autocomplete="new-password">
+    <input type="password" name="new_password2" placeholder="új jelszó újra" required autocomplete="new-password">
+    <button>Jelszó módosítása</button>
+  </form>
+</section>
+{% endblock %}

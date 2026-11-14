@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row between"><h1>Telefonok (Poly CCX500)</h1>
+  <div class="row">
+    <form method="post" action="/resync-all"><button class="secondary">Összes szinkronizálása</button></form>
+    <a class="btn" href="/phones/new">+ Új telefon</a>
+  </div>
+</div>
+{% if ami_error %}<div class="flash err">Asterisk: {{ ami_error }}</div>{% endif %}
+<table class="card">
+  <tr><th>MAC</th><th>Megnevezés</th><th>Vonalak</th><th>Állapot</th><th>IP</th><th>Firmware</th><th>Utolsó provisioning</th></tr>
+  {% for p in phones %}
+  <tr>
+    <td><a class="mono" href="/phones/{{ p.mac }}">{{ p.mac }}</a></td>
+    <td>{{ p.label }}</td>
+    <td>{% for l in p.lines %}{{ l.ext }} {% endfor %}</td>
+    <td>{% if not p.lines %}<span class="pill">nincs vonal</span>
+        {% elif p.registered %}<span class="pill ok">regisztrált</span>
+        {% else %}<span class="pill err">offline</span>{% endif %}</td>
+    <td>{{ p.seen.ip if p.seen }}</td>
+    <td>{{ p.seen.firmware if p.seen }}</td>
+    <td class="small">{{ p.seen.last_seen if p.seen }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="muted">Még nincs telefon. Csatlakoztasd a CCX500-at (DHCP 66/160 opció vagy kézi provisioning szerver),
+    és megjelenik az Áttekintés oldalon, vagy vedd fel a MAC címe alapján.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

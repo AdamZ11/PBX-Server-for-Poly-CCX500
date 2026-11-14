@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ 'Új mellék' if is_new else 'Mellék: ' ~ ext.ext }}</h1>
+<form method="post" action="/extensions/save" class="card grid">
+  <input type="hidden" name="is_new" value="{{ '1' if is_new else '0' }}">
+  <label>Hívószám
+    <input name="ext" value="{{ ext.ext }}" {{ '' if is_new else 'readonly' }} required pattern="[1-9][0-9]{1,5}">
+    <small>Javasolt: 2000-5999 (1xx a segélyhívóknak, 6xxx csoportok, 700-708 park, 800-809 konferencia)</small></label>
+  <label>Név <input name="name" value="{{ ext.name }}" required maxlength="64"></label>
+  <label>SIP jelszó
+    <input name="secret" value="" placeholder="{{ 'automatikusan generált' if is_new else 'változatlan' }}">
+    <small>Üresen hagyva {{ 'generál egyet' if is_new else 'megtartja a jelenlegit' }}. A telefon automatikusan megkapja.</small></label>
+  <label>Csengetési idő (mp) <input name="ring_time" type="number" min="5" max="120" value="{{ ext.ring_time }}"></label>
+  <label class="check"><input type="checkbox" name="vm_enabled" value="1" {{ 'checked' if ext.vm_enabled }}> Hangposta</label>
+  <label>Hangposta PIN <input name="vm_pin" value="{{ ext.vm_pin }}" pattern="[0-9]{4,10}"></label>
+  <label>E-mail (hangposta értesítő) <input name="email" type="email" value="{{ ext.email }}"></label>
+  <label>Hívásfelvételi csoport <input name="pickup_group" value="{{ ext.pickup_group }}">
+    <small>{{ plan.FC_GROUP_PICKUP }} = csoportos felvétel, {{ plan.FC_DIRECTED_PICKUP }}+mellék = célzott felvétel</small></label>
+  <label>Max. egyidejű eszköz <input name="max_contacts" type="number" min="1" max="5" value="{{ ext.max_contacts }}">
+    <small>&gt;1 esetén ugyanaz a mellék több telefonon is csörög</small></label>
+  <label class="check"><input type="checkbox" name="record" value="1" {{ 'checked' if ext.record }}> Minden bejövő hívás rögzítése</label>
+  <label class="check"><input type="checkbox" name="in_directory" value="1" {{ 'checked' if ext.in_directory }}> Szerepeljen a telefonkönyvben</label>
+  <label class="check"><input type="checkbox" name="page_member" value="1" {{ 'checked' if ext.page_member }}> Tagja a "mindenki" hangosbemondásnak ({{ plan.FC_PAGE_ALL }})</label>
+  <div class="row full"><button>Mentés</button><a class="btn secondary" href="/extensions">Mégse</a></div>
+</form>
+{% endblock %}

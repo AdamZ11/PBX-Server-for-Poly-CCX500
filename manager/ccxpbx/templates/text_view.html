@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row between"><h1>{{ title }}</h1><a class="btn secondary" href="{{ back }}">Vissza</a></div>
+{% if error %}<div class="flash err">{{ error }}</div>{% endif %}
+{% if text %}<pre class="card code">{{ text }}</pre>{% endif %}
+{% endblock %}

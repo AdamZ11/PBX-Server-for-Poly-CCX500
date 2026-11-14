@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Trönkök és útvonalak</h1>
+{% if ami_error %}<div class="flash err">Asterisk: {{ ami_error }}</div>{% endif %}
+
+<section class="card">
+  <h2>SIP trönkök (szolgáltató)</h2>
+  <table>
+    <tr><th>Név</th><th>Szerver</th><th>Felhasználó</th><th>Regisztráció</th><th>Hívóazonosító</th><th></th></tr>
+    {% for t in rows %}
+    <tr><td><b>{{ t.name }}</b></td><td>{{ t.host }}:{{ t.port }}</td><td>{{ t.username }}</td>
+        <td>{% if t.register %}{{ status.get(t.name, '?') }}{% else %}IP alapú{% endif %}</td><td>{{ t.callerid }}</td>
+        <td class="right"><form method="post" action="/trunks/{{ t.name }}/delete" onsubmit="return confirm('Törlöd a trönköt és az útvonalait?')">
+          <button class="danger small">Törlés</button></form></td></tr>
+    {% else %}<tr><td colspan="6" class="muted">Nincs trönk - belső hívások így is működnek.</td></tr>{% endfor %}
+  </table>
+  <h3>Trönk hozzáadása / módosítása (azonos névvel felülírja)</h3>
+  <form method="post" action="/trunks/save" class="grid">
+    <label>Név <input name="name" required pattern="[a-z0-9][a-z0-9_\-]{0,31}" placeholder="szolgaltato"></label>
+    <label>Szerver <input name="host" required placeholder="sip.szolgaltato.hu"></label>
+    <label>Port <input name="port" type="number" value="5060"></label>
+    <label>Felhasználónév <input name="username"></label>
+    <label>Jelszó <input name="password" type="password" placeholder="módosításnál üresen = változatlan"></label>
+    <label class="check"><input type="checkbox" name="register" value="1" checked> Regisztráljon a szolgáltatóhoz</label>
+    <label>From user <input name="from_user" placeholder="alapértelmezés: felhasználónév"></label>
+    <label>From domain <input name="from_domain"></label>
+    <label>Kimenő hívóazonosító <input name="callerid" placeholder="+3612345678"></label>
+    <label>Kodekek <input name="codecs" value="alaw,ulaw,g722"></label>
+    <div class="row full"><button>Trönk mentése</button></div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Kimenő útvonalak</h2>
+  <table>
+    <tr><th>Minta</th><th>Levág</th><th>Előtag</th><th>Trönk</th><th></th></tr>
+    {% for r in outbound %}
+    <tr><td class="mono">{{ r.pattern }}</td><td>{{ r.strip }}</td><td>{{ r.prepend }}</td><td>{{ r.trunk }}</td>
+        <td class="right"><form method="post" action="/routes/outbound/{{ r.id }}/delete"><button class="danger small">Törlés</button></form></td></tr>
+    {% else %}<tr><td colspan="5" class="muted">Nincs kimenő útvonal.</td></tr>{% endfor %}
+  </table>
+  <form method="post" action="/routes/outbound" class="row wrap">
+    <input name="pattern" placeholder="_0." required> <input name="strip" type="number" min="0" max="10" value="1" title="levágott számjegyek">
+    <input name="prepend" placeholder="előtag"> <select name="trunk">{% for t in rows %}<option>{{ t.name }}</option>{% endfor %}</select>
+    <button>Hozzáadás</button>
+  </form>
+  <p class="muted small">Példák: <code>_0.</code> levág 1 = "0"-val kifelé hívás; <code>112</code>, <code>_10[457]</code> levág 0 = segélyhívók közvetlenül.
+    X = 0-9, N = 2-9, Z = 1-9, . = bármennyi további számjegy.</p>
+</section>
+
+<section class="card">
+  <h2>Bejövő útvonalak (DID)</h2>
+  <table>
+    <tr><th>DID</th><th>Cél</th><th></th></tr>
+    {% for r in inbound %}
+    <tr><td class="mono">{{ r.did }}</td><td>{{ r.destination }}</td>
+        <td class="right"><form method="post" action="/routes/inbound/{{ r.id }}/delete"><button class="danger small">Törlés</button></form></td></tr>
+    {% endfor %}
+    <tr><td class="muted">minden más</td><td>{{ settings.inbound_default or '- (elutasítva)' }} <a href="/settings">módosítás</a></td><td></td></tr>
+  </table>
+  <form method="post" action="/routes/inbound" class="row wrap">
+    <input name="did" placeholder="3612345678" required> <input name="destination" placeholder="2001 / 6000 / vm:2001" required>
+    <button>Hozzáadás</button>
+  </form>
+</section>
+{% endblock %}

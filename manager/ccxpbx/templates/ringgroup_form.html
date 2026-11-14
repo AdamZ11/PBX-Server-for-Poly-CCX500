@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ 'Új csengetési csoport' if is_new else 'Csoport: ' ~ group.num }}</h1>
+<form method="post" action="/ringgroups/save" class="card grid">
+  <input type="hidden" name="is_new" value="{{ '1' if is_new else '0' }}">
+  <label>Szám <input name="num" value="{{ group.num }}" {{ '' if is_new else 'readonly' }} required></label>
+  <label>Név <input name="name" value="{{ group.name }}" maxlength="64"></label>
+  <label>Stratégia <select name="strategy">
+    <option value="ringall" {{ 'selected' if group.strategy == 'ringall' }}>Egyszerre mind csörög</option>
+    <option value="hunt" {{ 'selected' if group.strategy == 'hunt' }}>Sorban (hunt)</option></select></label>
+  <label>Csengetési idő (mp, tagonként sorban) <input type="number" name="ring_time" min="5" max="300" value="{{ group.ring_time }}"></label>
+  <fieldset class="full"><legend>Tagok</legend>
+    {% for e in exts %}<label class="check"><input type="checkbox" name="members" value="{{ e.ext }}" {{ 'checked' if e.ext in members }}> {{ e.ext }} {{ e.name }}</label>{% endfor %}
+  </fieldset>
+  <label>Tartalék cél, ha senki nem veszi fel <input name="failover" value="{{ group.failover }}" placeholder="pl. vm:2001 vagy 2005">
+    <small>mellék, csoport, 800-809 konferencia vagy vm:mellék (hangposta)</small></label>
+  <div class="row full"><button>Mentés</button><a class="btn secondary" href="/ringgroups">Mégse</a></div>
+</form>
+{% endblock %}

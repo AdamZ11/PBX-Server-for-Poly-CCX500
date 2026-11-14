@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ 'Új telefon' if is_new else (phone.label or 'Telefon') ~ ' · ' ~ phone.mac }}</h1>
+
+{% if not is_new %}
+<section class="card">
+  <h2>Állapot és kezelés</h2>
+  {% if ami_error %}<div class="flash err">Asterisk: {{ ami_error }}</div>{% endif %}
+  <dl class="kv">
+    <dt>SIP regisztráció</dt>
+    <dd>{% if contact %}<span class="pill ok">{{ contact.Status }}</span> <span class="mono small">{{ contact.Uri }}</span>
+        {% elif phone.lines %}<span class="pill err">nincs regisztrálva</span>{% else %}<span class="pill">nincs vonal rendelve</span>{% endif %}</dd>
+    <dt>IP cím</dt><dd>{{ ip or '-' }} {% if ip %}<a href="https://{{ ip }}" target="_blank" rel="noopener">telefon webfelülete ↗</a>{% endif %}</dd>
+    <dt>Modell / firmware</dt><dd>{{ seen.model if seen }} {{ seen.firmware if seen }}</dd>
+    <dt>User-Agent</dt><dd class="small">{{ seen.user_agent if seen }}</dd>
+    <dt>Utolsó provisioning</dt><dd>{{ seen.last_seen if seen }} ({{ seen.last_file if seen }})</dd>
+  </dl>
+  <div class="row wrap">
+    <form method="post" action="/phones/{{ phone.mac }}/action/resync"><button>Konfig szinkronizálás</button></form>
+    <form method="post" action="/phones/{{ phone.mac }}/action/reboot"><button class="secondary">Újraindítás (SIP)</button></form>
+    <form method="post" action="/phones/{{ phone.mac }}/action/restart"><button class="secondary">Alkalmazás újraindítás (REST)</button></form>
+    <form method="post" action="/phones/{{ phone.mac }}/action/safe-reboot"><button class="secondary">Teljes reboot (REST)</button></form>
+    <a class="btn secondary" href="/phones/{{ phone.mac }}/rest/info">Eszközinfó</a>
+    <a class="btn secondary" href="/phones/{{ phone.mac }}/rest/network">Hálózat</a>
+    <a class="btn secondary" href="/phones/{{ phone.mac }}/rest/lines">Vonalak</a>
+    <a class="btn secondary" href="/phones/{{ phone.mac }}/rest/calls">Hívásállapot</a>
+    <a class="btn secondary" href="/phones/{{ phone.mac }}/config">Generált konfig</a>
+  </div>
+  <form method="post" action="/phones/{{ phone.mac }}/action/dial" class="row">
+    <input name="number" placeholder="szám" pattern="[0-9*#+]{1,32}" required>
+    <button class="secondary">Hívás indítása erről a telefonról (REST)</button>
+  </form>
+  {% if files %}
+  <h3>A telefon által feltöltött fájlok</h3>
+  <table>
+    <tr><th>Mappa</th><th>Fájl</th><th>Méret</th></tr>
+    {% for f in files %}<tr><td>{{ f.dir }}</td><td><a href="/phones/{{ phone.mac }}/files/{{ f.dir }}/{{ f.name }}">{{ f.name }}</a></td><td>{{ (f.size / 1024)|round(1) }} kB</td></tr>{% endfor %}
+  </table>
+  {% if files|selectattr('dir', 'equalto', 'overrides')|list %}
+  <form method="post" action="/phones/{{ phone.mac }}/action/clear-overrides" onsubmit="return confirm('Törlöd a telefonon / webfelületen tett beállításokat?')">
+    <button class="danger small">Telefon oldali override-ok törlése</button>
+    <small class="muted">A telefonon kézzel módosított beállítások felülírják a szerver konfigot.</small>
+  </form>
+  {% endif %}
+  {% endif %}
+</section>
+{% endif %}
+
+<form method="post" action="/phones/save" class="card">
+  <input type="hidden" name="is_new" value="{{ '1' if is_new else '0' }}">
+  <h2>Alapadatok</h2>
+  <div class="grid">
+    <label>MAC cím <input name="mac" value="{{ phone.mac }}" {{ '' if is_new else 'readonly' }} required placeholder="0004f2aabbcc"></label>
+    <label>Megnevezés <input name="label" value="{{ phone.label }}" maxlength="64" placeholder="pl. Recepció"></label>
+  </div>
+
+  <h2>Vonalak (SIP regisztrációk)</h2>
+  <table>
+    <tr><th>#</th><th>Mellék</th><th>Vonalgombok száma</th></tr>
+    {% for i in range(1, plan.MAX_LINES + 1) %}
+    <tr><td>{{ i }}</td>
+      <td><select name="line_ext_{{ i }}"><option value="">-</option>
+        {% for e in exts %}<option value="{{ e.ext }}" {{ 'selected' if lines.get(i) and lines[i].ext == e.ext }}>{{ e.ext }} {{ e.name }}</option>{% endfor %}
+      </select></td>
+      <td><input type="number" name="line_keys_{{ i }}" min="1" max="8" value="{{ lines[i].line_keys if lines.get(i) else 1 }}"></td></tr>
+    {% endfor %}
+  </table>
+
+  <h2>Gombkiosztás (line key-ek)</h2>
+  <p class="muted">Ha minden sor üres, a telefon automatikusan rendezi a gombokat. BLF értéke mellék vagy park hely (701-708),
+     a gyorshívó bármilyen szám. A park gomb hívás közben megnyomva parkolja a hívást.</p>
+  <table class="keys">
+    <tr><th>#</th><th>Típus</th><th>Érték</th><th>Felirat</th></tr>
+    {% for pos in range(1, plan.MAX_KEYS + 1) %}{% set k = keys.get(pos) %}
+    <tr>
+      <td>{{ pos }}</td>
+      <td><select name="key_type_{{ pos }}"><option value="">-</option>
+        {% for t, label in KEY_TYPES.items() %}<option value="{{ t }}" {{ 'selected' if k and k.type == t }}>{{ label }}</option>{% endfor %}
+      </select></td>
+      <td><input name="key_value_{{ pos }}" value="{{ k.value if k }}" list="numbers" size="10"></td>
+      <td><input name="key_label_{{ pos }}" value="{{ k.label if k }}" maxlength="24"></td>
+    </tr>
+    {% endfor %}
+  </table>
+  <datalist id="numbers">
+    {% for e in exts %}<option value="{{ e.ext }}">{{ e.name }}</option>{% endfor %}
+    {% for s in plan.PARK_SLOTS %}<option value="{{ s }}">Park {{ s }}</option>{% endfor %}
+  </datalist>
+
+  <h2>Egyedi Poly paraméterek</h2>
+  <label>Telefonra specifikus paraméterek (<code>kulcs=érték</code> soronként, ezek felülírják a generáltakat)
+    <textarea name="overrides" rows="5" class="mono" placeholder="up.backlight.idleIntensity=1">{{ phone.overrides }}</textarea></label>
+  <label>Megjegyzés <textarea name="notes" rows="2">{{ phone.notes }}</textarea></label>
+  <div class="row"><button>Mentés</button><a class="btn secondary" href="/phones">Vissza</a></div>
+</form>
+
+{% if not is_new %}
+<div class="row">
+  <form method="post" action="/phones/{{ phone.mac }}/autokeys" onsubmit="return confirm('Felülírja a jelenlegi gombkiosztást. Folytatod?')">
+    <button class="secondary">Automatikus gombkiosztás (vonal + park + BLF mindenkire)</button></form>
+  <form method="post" action="/phones/{{ phone.mac }}/delete" onsubmit="return confirm('Törlöd a telefont?')">
+    <button class="danger">Telefon törlése</button></form>
+</div>
+{% endif %}
+{% endblock %}
