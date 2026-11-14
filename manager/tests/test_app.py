@@ -196,3 +196,28 @@ def test_settings_validation(client):
     page = client.post("/settings", data=form).text
     assert "has space!" not in page and "Telefon admin jelszó: 6-32 karakter" in page
     assert db.get_settings(db.connect())["phone_admin_password"] == "Adamka12345."
+
+
+def test_home_screen_editor(client):
+    login(client)
+    mac = "0004f2aabbcc"   # created by test_full_flow
+    page = client.get(f"/phones/{mac}/screen")
+    assert page.status_code == 200 and 'id="editor-data"' in page.text and "/static/screen.js" in page.text
+    assert client.get("/static/screen.js").status_code == 200
+
+    # the editor posts the same key_* fields as the phone form, renumbered in display order
+    r = client.post(f"/phones/{mac}/screen", data={
+        "wallpaper": "CCXPBX_hatter_02_kapcsolotabla.jpg",
+        "key_type_1": "blf", "key_value_1": "2002", "key_label_1": "Béla",
+        "key_type_2": "line", "key_value_2": "1",
+        "key_type_3": "speeddial", "key_value_3": "112", "key_label_3": "Segély",
+    }, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == f"/phones/{mac}/screen"
+    cfg = prov(client, f"/prov/ccx/{mac}-phone.cfg").text
+    assert 'lineKey.1.category="BLF"' in cfg and 'lineKey.2.category="Line"' in cfg and 'lineKey.3.category="EFK"' in cfg
+    assert "CCXPBX_hatter_02_kapcsolotabla.jpg" in cfg
+
+    # an invalid number is rejected and nothing changes
+    r = client.post(f"/phones/{mac}/screen", data={"key_type_1": "speeddial", "key_value_1": "abc"}, follow_redirects=False)
+    assert r.headers["location"] == f"/phones/{mac}/screen"
+    assert 'lineKey.3.category="EFK"' in prov(client, f"/prov/ccx/{mac}-phone.cfg").text

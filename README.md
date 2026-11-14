@@ -99,6 +99,7 @@ fájlt átmásolni, majd a telepítőt lefuttatni.
 | Csengetési csoport | 6xxx, egyszerre / sorban, tartalék cél | |
 | Telefonkönyv | automatikus a mellékekből (`000000000000-directory.xml`) | Contacts; a telefonon szerkesztve visszatöltődik a szerverre |
 | Gyorshívó | gombkiosztás → *Gyorshívó* (EFK) | |
+| Főképernyő szerkesztő | Telefon → *Főképernyő szerkesztő*: a gombok húzással rendezhetők, a háttérkép kiválasztható, élő CCX500 előnézettel | mentéskor azonnal megkapja (check-sync) |
 | Kifelé hívás | Trönkök menü: SIP szolgáltató + kimenő minta (pl. `_0.` levág 1) | |
 | Titkosítás | Beállítások → SIP transport *TLS + SRTP* (a saját CA-t a szerver kiküldi a telefonra) | |
 | Firmware frissítés | Beállítások → firmware feltöltés és kiválasztás | a telefon a következő induláskor frissít |

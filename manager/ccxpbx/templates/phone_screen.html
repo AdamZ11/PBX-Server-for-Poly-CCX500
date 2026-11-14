@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Főképernyő · {{ phone.label or phone.mac }} · CCXPBX{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Főképernyő</h1>
+    <p class="muted">{{ phone.label or 'Telefon' }} <span class="mono">{{ phone.mac }}</span> · a bal oldali előnézet mutatja, mit fogsz látni a telefonon</p>
+  </div>
+  <a class="btn secondary" href="/phones/{{ phone.mac }}">Vissza a telefonhoz</a>
+</div>
+
+<form method="post" action="/phones/{{ phone.mac }}/screen" id="screen-form" class="screen-editor">
+  <div class="screen-preview">
+    <div class="ccx" aria-label="CCX500 előnézet">
+      <div class="ccx-handset"><span>HD</span></div>
+      <div class="ccx-body">
+        <div class="ccx-glass">
+          <div class="ccx-screen" id="pv-screen">
+            <div class="ccx-status"><span id="pv-line"></span><span id="pv-clock" class="mono"></span></div>
+            <div class="ccx-keys" id="pv-keys"></div>
+            <div class="ccx-pager" id="pv-pager"></div>
+            <div class="ccx-softkeys"><span>Új hívás</span><span>Átirányítás</span><span>DND</span><span>Névjegyek</span></div>
+            <div class="ccx-navbar"><span>&#8592;</span><span>&#8962;</span></div>
+          </div>
+        </div>
+        <div class="ccx-grille"></div>
+      </div>
+    </div>
+    <p class="muted small center" id="pv-note"></p>
+  </div>
+
+  <div class="stack">
+    <section class="card">
+      <h2>Háttérkép</h2>
+      <div class="wallpapers compact" id="wp-list" role="radiogroup" aria-label="Háttérkép"></div>
+    </section>
+
+    <section class="card">
+      <div class="page-head">
+        <h2>Gombok <span class="muted small" id="key-count"></span></h2>
+        <div class="row wrap">
+          <button type="button" class="secondary small" data-add="line">+ Vonal</button>
+          <button type="button" class="secondary small" data-add="blf">+ BLF</button>
+          <button type="button" class="secondary small" data-add="park">+ Park</button>
+          <button type="button" class="secondary small" data-add="speeddial">+ Gyorshívó</button>
+          <button type="button" class="secondary small" data-add="unassigned">+ Üres</button>
+        </div>
+      </div>
+      <p class="muted small">Húzd a sorokat a ⋮⋮ fogantyúnál, vagy használd a nyilakat. Az előnézetben egy gombra kattintva
+        ide ugrik a szerkesztő. Ha a lista üres, a telefon maga rendezi a vonalgombokat.</p>
+      <ol class="keylist" id="key-list"></ol>
+      <div class="row wrap">
+        <button type="button" class="secondary small" id="all-blf">Minden mellék BLF-re</button>
+        <button type="button" class="danger small" id="clear-keys">Lista ürítése</button>
+      </div>
+    </section>
+
+    <div class="row">
+      <button>Mentés és küldés a telefonra</button>
+      <a class="btn secondary" href="/phones/{{ phone.mac }}/screen">Elvetés</a>
+      <span class="muted small" id="dirty" hidden>Nem mentett változások</span>
+    </div>
+  </div>
+  <div id="hidden-fields"></div>
+</form>
+
+<script type="application/json" id="editor-data">{{ editor|tojson }}</script>
+<script type="application/json" id="key-types">{{ key_types|tojson }}</script>
+<script src="/static/screen.js" defer></script>
+{% endblock %}

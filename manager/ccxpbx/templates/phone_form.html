@@ -26,6 +26,7 @@
     <form method="post" action="/phones/{{ phone.mac }}/action/reboot"><button class="secondary">Újraindítás (SIP)</button></form>
     <form method="post" action="/phones/{{ phone.mac }}/action/restart"><button class="secondary">Alkalmazás újraindítás (REST)</button></form>
     <form method="post" action="/phones/{{ phone.mac }}/action/safe-reboot"><button class="secondary">Teljes reboot (REST)</button></form>
+    <a class="btn secondary" href="/phones/{{ phone.mac }}/screen">Főképernyő szerkesztő</a>
     <a class="btn secondary" href="/phones/{{ phone.mac }}/rest/info">Eszközinfó</a>
     <a class="btn secondary" href="/phones/{{ phone.mac }}/rest/network">Hálózat</a>
     <a class="btn secondary" href="/phones/{{ phone.mac }}/rest/lines">Vonalak</a>
@@ -79,7 +80,7 @@
     {% endfor %}
   </table>
 
-  <h2>Gombkiosztás (line key-ek)</h2>
+  <h2>Gombkiosztás (line key-ek){% if not is_new %} <a class="small" href="/phones/{{ phone.mac }}/screen">vizuális szerkesztő</a>{% endif %}</h2>
   <p class="muted">Ha minden sor üres, a telefon automatikusan rendezi a gombokat. BLF értéke mellék vagy park hely (701-708),
      a gyorshívó bármilyen szám. A park gomb hívás közben megnyomva parkolja a hívást.</p>
   <table class="keys">

@@ -394,6 +394,29 @@ async def phone_list(request: Request, conn=Depends(get_db), _=Depends(require_l
     return render(request, conn, "phones.html", phones=phones, ami_error=err, live_page="phones")
 
 
+def parse_keys(form, n_lines: int) -> list[tuple]:
+    """key_type_N / key_value_N / key_label_N form fields -> validated (pos, type, value, label) rows."""
+    keys = []
+    for pos in range(1, plan.MAX_KEYS + 1):
+        ktype = fval(form, f"key_type_{pos}")
+        if not ktype:
+            continue
+        if ktype not in plan.KEY_TYPES:
+            raise plan.ValidationError(f"{pos}. gomb: ismeretlen típus")
+        value = fval(form, f"key_value_{pos}")
+        label = plan.clean_text(fval(form, f"key_label_{pos}"), 24)
+        if ktype == "line":
+            if not value.isdigit() or not 1 <= int(value) <= max(n_lines, 1):
+                raise plan.ValidationError(f"{pos}. gomb: a vonal sorszáma 1..{max(n_lines, 1)}")
+        elif ktype in ("blf", "speeddial"):
+            if not plan.DIAL_RE.match(value):
+                raise plan.ValidationError(f"{pos}. gomb: érvénytelen hívószám ({value!r})")
+        else:
+            value = ""
+        keys.append((pos, ktype, value, label))
+    return keys
+
+
 def _phone_form_ctx(conn, phone: dict) -> dict:
     exts = conn.execute("SELECT ext, name FROM extensions ORDER BY ext").fetchall()
     keys = {k["pos"]: k for k in phone.get("keys", [])}
@@ -439,24 +462,7 @@ async def phone_save(request: Request, conn=Depends(get_db), _=Depends(require_l
             if not conn.execute("SELECT 1 FROM extensions WHERE ext=?", (ext,)).fetchone():
                 raise plan.ValidationError(f"Ismeretlen mellék: {ext}")
             lines.append((len(lines) + 1, ext, fint(form, f"line_keys_{i}", 1, 1, 8)))
-        keys = []
-        for pos in range(1, plan.MAX_KEYS + 1):
-            ktype = fval(form, f"key_type_{pos}")
-            if not ktype:
-                continue
-            if ktype not in plan.KEY_TYPES:
-                raise plan.ValidationError(f"{pos}. gomb: ismeretlen típus")
-            value = fval(form, f"key_value_{pos}")
-            label = plan.clean_text(fval(form, f"key_label_{pos}"), 24)
-            if ktype == "line":
-                if not value.isdigit() or not 1 <= int(value) <= max(len(lines), 1):
-                    raise plan.ValidationError(f"{pos}. gomb: a vonal sorszáma 1..{max(len(lines), 1)}")
-            elif ktype in ("blf", "speeddial"):
-                if not plan.DIAL_RE.match(value):
-                    raise plan.ValidationError(f"{pos}. gomb: érvénytelen hívószám ({value!r})")
-            else:
-                value = ""
-            keys.append((pos, ktype, value, label))
+        keys = parse_keys(form, len(lines))
         overrides = form.get("overrides") or ""
         plan.parse_params(overrides)
     except plan.ValidationError as exc:
@@ -488,6 +494,52 @@ async def phone_save(request: Request, conn=Depends(get_db), _=Depends(require_l
     else:
         flash(request, "Telefon mentve, a konfiguráció elküldve a telefonnak (check-sync).")
     return redirect(f"/phones/{mac}")
+
+
+@router.get("/phones/{mac}/screen", response_class=HTMLResponse)
+def phone_screen(mac: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
+    phone = db.load_phone(conn, mac)
+    if not phone:
+        return redirect("/phones")
+    settings = db.get_settings(conn)
+    exts = [dict(r) for r in conn.execute("SELECT ext, name FROM extensions ORDER BY ext")]
+    editor = {
+        "mac": mac,
+        "label": phone["label"],
+        "lines": [{"idx": l["idx"], "ext": l["ext"], "name": l["name"], "line_keys": l["line_keys"]} for l in phone["lines"]],
+        "keys": phone["keys"],
+        "exts": exts,
+        "parkSlots": list(plan.PARK_SLOTS),
+        "parkExt": plan.PARK_EXT,
+        "maxKeys": plan.MAX_KEYS,
+        "wallpaper": phone.get("wallpaper") or "",
+        "siteWallpaper": settings.get("wallpaper", ""),
+        "wallpapers": wallpapers.available(),
+        "clock24": settings.get("clock_24h", "1") == "1",
+    }
+    return render(request, conn, "phone_screen.html", phone=phone, editor=editor, key_types=plan.KEY_TYPES)
+
+
+@router.post("/phones/{mac}/screen")
+async def phone_screen_save(mac: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
+    phone = db.load_phone(conn, mac)
+    if not phone:
+        return redirect("/phones")
+    form = await request.form()
+    try:
+        keys = parse_keys(form, len(phone["lines"]))
+    except plan.ValidationError as exc:
+        flash(request, str(exc), "err")
+        return redirect(f"/phones/{mac}/screen")
+    wallpaper = fval(form, "wallpaper")
+    if wallpaper not in ("", "none") and not wallpapers.path(wallpaper):
+        wallpaper = ""
+    conn.execute("UPDATE phones SET wallpaper=? WHERE mac=?", (wallpaper, mac))
+    conn.execute("DELETE FROM phone_keys WHERE mac=?", (mac,))
+    conn.executemany("INSERT INTO phone_keys(mac, pos, type, value, label) VALUES (?,?,?,?,?)",
+                     [(mac, *key) for key in keys])
+    await run_in_threadpool(apply_now, request, conn, mac)
+    return redirect(f"/phones/{mac}/screen")
 
 
 @router.post("/phones/{mac}/autokeys")
