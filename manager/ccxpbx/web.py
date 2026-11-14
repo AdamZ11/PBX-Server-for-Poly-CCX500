@@ -516,6 +516,9 @@ def phone_screen(mac: str, request: Request, conn=Depends(get_db), _=Depends(req
         "siteWallpaper": settings.get("wallpaper", ""),
         "wallpapers": wallpapers.available(),
         "clock24": settings.get("clock_24h", "1") == "1",
+        "homeIcons": [{"key": k, "label": l, "desc": d} for k, l, d in plan.HOME_ICONS],
+        "homeHidden": [k for k in (phone.get("home_hidden") or "").split(",") if k],
+        "microbrowser": settings.get("microbrowser", "1") == "1",
     }
     return render(request, conn, "phone_screen.html", phone=phone, editor=editor, key_types=plan.KEY_TYPES)
 
@@ -534,7 +537,8 @@ async def phone_screen_save(mac: str, request: Request, conn=Depends(get_db), _=
     wallpaper = fval(form, "wallpaper")
     if wallpaper not in ("", "none") and not wallpapers.path(wallpaper):
         wallpaper = ""
-    conn.execute("UPDATE phones SET wallpaper=? WHERE mac=?", (wallpaper, mac))
+    hidden = ",".join(k for k in plan.HOME_ICON_KEYS if k in fval(form, "home_hidden").split(","))
+    conn.execute("UPDATE phones SET wallpaper=?, home_hidden=? WHERE mac=?", (wallpaper, hidden, mac))
     conn.execute("DELETE FROM phone_keys WHERE mac=?", (mac,))
     conn.executemany("INSERT INTO phone_keys(mac, pos, type, value, label) VALUES (?,?,?,?,?)",
                      [(mac, *key) for key in keys])

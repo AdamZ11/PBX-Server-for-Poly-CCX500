@@ -28,6 +28,20 @@ KEY_TYPES = {
     "speeddial": "Gyorshívó",
     "unassigned": "Üres",
 }
+# Home screen icons of the CCX500 in the phone's own order: (key, homeScreen.<key>.enable, label on the phone, Hungarian description)
+HOME_ICONS = [
+    ("newCall", "Place a Call", "Hívás indítása"),
+    ("redial", "Redial", "Újratárcsázás"),
+    ("messages", "Messages", "Üzenetek, hangposta"),
+    ("contacts", "Contacts", "Névjegyek"),
+    ("doNotDisturb", "DND", "Ne zavarj"),
+    ("settings", "Settings", "Beállítások"),
+    ("forward", "Forward", "Átirányítás"),
+    ("directories", "Directories", "Telefonkönyvek"),
+    ("application", "Applications", "Alkalmazások (CCXPBX oldal)"),
+]
+HOME_ICON_KEYS = [k for k, _, _ in HOME_ICONS]
+
 MAX_KEYS = 24   # CCX500 line key slots managed by the UI
 MAX_LINES = 4
 

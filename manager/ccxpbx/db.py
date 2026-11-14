@@ -175,6 +175,7 @@ def connect(path: Path | str | None = None) -> sqlite3.Connection:
 MIGRATIONS = [
     # (table, column, definition) - added to existing databases on start
     ("phones", "wallpaper", "TEXT NOT NULL DEFAULT ''"),   # '' = site default, 'none' = no background
+    ("phones", "home_hidden", "TEXT NOT NULL DEFAULT ''"), # comma separated plan.HOME_ICONS keys hidden on the home screen
 ]
 
 

@@ -348,6 +348,11 @@ def phone_params(snapshot: dict, phone: dict) -> dict:
     else:
         p["lineKey.reassignment.enabled"] = "0"
 
+    # Hidden home screen icons; icons not listed keep the site / factory default
+    hidden = {k for k in (phone.get("home_hidden") or "").split(",") if k in plan.HOME_ICON_KEYS}
+    for key in hidden:
+        p[f"homeScreen.{key}.enable"] = "0"
+
     if phone.get("wallpaper"):   # per-phone choice beats the site default
         p.update(_wallpaper_params(s, phone["wallpaper"]))
 

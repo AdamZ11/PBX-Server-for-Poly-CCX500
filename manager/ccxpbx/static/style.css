@@ -190,72 +190,97 @@ details.raw pre { margin-top: 12px; }
 .wallpaper input:focus-visible + img, .wallpaper input:focus-visible + .none { outline: 2px solid var(--ccx-ink); outline-offset: 2px; }
 .wallpaper span { font-size: 13px; }
 
-/* ---------- home screen editor ---------- */
-.screen-editor { display: grid; grid-template-columns: minmax(340px, 440px) minmax(0, 1fr); gap: 24px; align-items: start; }
-.screen-preview { position: sticky; top: 16px; }
+/* ---------- home screen editor (the drawn CCX500 is the editor) ---------- */
 .center { text-align: center; }
-.wallpapers.compact { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 12px; }
-.wallpapers.compact .wallpaper span { font-size: 12px; }
+.ccx-stage { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.ccx-col { flex: 0 1 560px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.ccx-inspector { flex: 1 1 320px; max-width: 460px; position: sticky; top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.ccx-inspector h3 { margin: 10px 0 2px; font-size: 14px; }
+.ccx-inspector label { display: flex; flex-direction: column; gap: 4px; }
+.ccx-inspector label.check { flex-direction: row; align-items: center; gap: 8px; }
+.insp-head { display: flex; justify-content: space-between; align-items: center; }
+.icon-toggles { display: flex; flex-direction: column; gap: 4px; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button { min-height: 34px; padding: 0 12px; font-size: 13px; background: var(--ccx-white); color: var(--ccx-ink); border: 1px solid var(--ccx-gray-300); font-weight: 500; }
+.seg button.on { background: var(--ccx-ink); color: var(--ccx-paper); border-color: var(--ccx-ink); }
+.type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.type-btn { flex-direction: column; align-items: flex-start; gap: 4px; min-height: 0; padding: 12px; background: var(--ccx-white); color: var(--ccx-ink);
+            border: 1px solid var(--ccx-line); text-align: left; font-weight: 400; }
+.type-btn:hover { background: var(--ccx-paper); border-color: var(--ccx-amber); }
+.type-btn small { color: var(--ccx-slate); font-size: 12px; }
+.wallpapers.compact { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 10px; }
+.wallpapers.compact .wallpaper span { font-size: 11px; }
+.ccx-mode { display: inline-flex; background: var(--ccx-white); border: 1px solid var(--ccx-line); border-radius: 999px; padding: 3px; }
+.ccx-mode button { min-height: 32px; padding: 0 16px; border-radius: 999px; background: transparent; color: var(--ccx-slate); border: 0; font-weight: 500; }
+.ccx-mode button.on { background: var(--ccx-ink); color: var(--ccx-paper); }
 
-/* CCX500 body: handset on the left, portrait touch screen and speaker grille on the right */
-.ccx { display: flex; gap: 0; padding: 18px 16px 18px 12px; background: linear-gradient(160deg, #2b2f35, #15181c); border-radius: 22px;
-       box-shadow: 0 18px 40px rgba(14, 17, 22, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06); }
-.ccx-handset { flex: 0 0 64px; margin-right: 10px; border-radius: 14px 14px 10px 10px; background: linear-gradient(90deg, #121417, #2a2e33 55%, #16191c);
-               position: relative; }
-.ccx-handset span { position: absolute; bottom: 24px; left: 0; right: 0; text-align: center; font-size: 9px; color: #5B6573; letter-spacing: 0.08em; }
-.ccx-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.ccx-glass { background: #050607; border-radius: 10px; padding: 16px 30px; }
-.ccx-screen { position: relative; aspect-ratio: 9 / 16; border-radius: 3px; overflow: hidden; display: flex; flex-direction: column;
-              background: #0E1116 center / cover no-repeat; color: #F6F7F9; font-family: var(--ccx-font-body); font-size: 11px; }
-.ccx-status { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; background: rgba(14, 17, 22, 0.55); font-size: 10px; }
-.ccx-status span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ccx-keys { flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; padding: 8px 6px 0; min-height: 0; }
-.ccx-key { display: flex; align-items: center; gap: 6px; min-height: 0; height: 26px; padding: 0 6px; border-radius: 6px; width: 100%;
-           background: rgba(27, 33, 41, 0.78); border: 1px solid rgba(255, 255, 255, 0.08); color: #F6F7F9; font: inherit; font-weight: 500;
-           text-align: left; cursor: pointer; justify-content: flex-start; }
-.ccx-key:hover { background: rgba(42, 50, 61, 0.9); }
-.ccx-key.sel { border-color: var(--ccx-amber); box-shadow: 0 0 0 1px var(--ccx-amber); }
-.ccx-key.t-unassigned { background: rgba(27, 33, 41, 0.3); border-style: dashed; }
-.ccx-key.t-line { background: rgba(31, 157, 85, 0.25); }
-.ccx-key.t-line.st-off { background: rgba(27, 33, 41, 0.78); }
-.ccx-key.t-line.st-busy { background: rgba(179, 38, 30, 0.45); }
-.ccx-key.t-line.st-ring { background: rgba(255, 138, 31, 0.45); }
-.ccx-icon { flex: 0 0 18px; display: inline-flex; align-items: center; justify-content: center; color: #C9CED6; }
-.ccx-glyph { display: inline-flex; width: 15px; height: 15px; border-radius: 4px; background: #F6F7F9; color: #0E1116; font-size: 10px; font-weight: 700;
-             align-items: center; justify-content: center; }
-.ccx-dot { width: 9px; height: 9px; border-radius: 5px; background: #1F9D55; }
-.ccx-dot.busy { background: #B3261E; } .ccx-dot.ring { background: #FF8A1F; }
-.ccx-dot.off { background: transparent; border: 1.5px solid #9AA3AE; }
-.ccx-dot.park-slot { background: transparent; border: 1.5px solid #FF8A1F; border-radius: 2px; }
-.ccx-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ccx-empty { margin: auto 12px; text-align: center; color: #C9CED6; }
-.ccx-pager { display: flex; justify-content: center; gap: 6px; padding: 4px 0; min-height: 14px; }
-.ccx-pager button { width: 7px; height: 7px; min-height: 0; padding: 0; border-radius: 4px; background: rgba(246, 247, 249, 0.35); border: 0; }
-.ccx-pager button.on { background: #F6F7F9; }
-.ccx-softkeys { display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(14, 17, 22, 0.8); border-top: 1px solid rgba(255, 255, 255, 0.08); }
-.ccx-softkeys span { padding: 7px 2px; text-align: center; font-size: 8.5px; color: #C9CED6; border-left: 1px solid rgba(255, 255, 255, 0.06); }
-.ccx-softkeys span:first-child { border-left: 0; }
-.ccx-navbar { display: flex; justify-content: center; gap: 56px; padding: 4px 0 6px; background: #000; color: #C9CED6; font-size: 15px; }
-.ccx-grille { height: 72px; border-radius: 8px; background: radial-gradient(circle, #0b0c0e 1.1px, transparent 1.3px) 0 0 / 5px 5px, #24282d; }
+/* device: corded handset on the left, glass face with the portrait screen, speaker and foot on the right */
+.ccx-device { display: flex; width: 100%; max-width: 560px; filter: drop-shadow(0 22px 30px rgba(14, 17, 22, 0.28)); }
+.ccx-handset { position: relative; flex: 0 0 25%; margin-right: -2%; z-index: 1; border-radius: 22px 22px 14px 14px;
+               background: linear-gradient(90deg, #0d0f11 0%, #2a2e33 38%, #1a1d20 70%, #0b0c0e 100%); }
+.ccx-handset-top { position: absolute; inset: 1.5% 8% auto; height: 10%; border-radius: 16px 16px 6px 6px; background: linear-gradient(180deg, #33383e, #16191c); }
+.ccx-hd { position: absolute; left: 0; right: 0; bottom: 6%; text-align: center; font-size: 10px; color: #5B6573; letter-spacing: 0.04em; }
+.ccx-cord { position: absolute; left: 22%; top: 100%; width: 40%; height: 46px; border-radius: 0 0 40px 40px;
+            background: repeating-linear-gradient(90deg, #111 0 3px, #2a2e33 3px 6px); clip-path: polygon(0 0, 100% 0, 85% 100%, 15% 100%); }
+.ccx-face { flex: 1 1 auto; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden;
+            background: linear-gradient(180deg, #2b2f34 0%, #1d2024 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.ccx-bezel { background: #000; padding: 6% 14% 5%; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08); }
+.ccx-speaker { height: 64px; background: radial-gradient(circle, #0a0b0c 1.15px, transparent 1.35px) 0 0 / 5px 5px, #2a2d31; }
+.ccx-foot { display: flex; justify-content: space-between; align-items: center; height: 34px; padding: 0 16px; background: #24272b; }
+.ccx-brand { width: 34px; height: 8px; border-radius: 4px; background: #3a3f45; }
+.ccx-mute { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #5B6573; }
 
-/* key rows */
-.keylist { list-style: none; margin: 8px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.keyrow { display: grid; grid-template-columns: 18px 22px 116px minmax(140px, 1.3fr) minmax(110px, 1fr) auto; gap: 8px; align-items: center;
-          padding: 6px 8px; border: 1px solid var(--ccx-line); border-radius: 10px; background: var(--ccx-white); }
-.keyrow.sel { border-color: var(--ccx-amber); box-shadow: 0 0 0 1px var(--ccx-amber); }
-.keyrow.over { border-style: dashed; border-color: var(--ccx-slate); }
-.keyrow.dragging { opacity: 0.4; }
-.keyrow .handle { cursor: grab; color: var(--ccx-gray-300); letter-spacing: -2px; user-select: none; }
-.keyrow .pos { color: var(--ccx-slate); font-size: 13px; }
-.keyrow select, .keyrow input { width: 100%; min-width: 0; }
-.keyrow .rowbtns { display: inline-flex; gap: 4px; }
-.keyrow .rowbtns button { width: 34px; padding: 0; }
-@media (max-width: 1100px) {
-  .screen-editor { grid-template-columns: 1fr; }
-  .screen-preview { position: static; max-width: 440px; margin: 0 auto; }
-  .keyrow { grid-template-columns: 18px 24px 1fr 1fr; }
-  .keyrow > input, .keyrow .rowbtns { grid-column: 3 / -1; }
-}
+/* screen: 720x1280 shown at half size; cqw keeps proportions at any width */
+.ccx-screen { position: relative; aspect-ratio: 9 / 16; overflow: hidden; display: flex; flex-direction: column; container-type: inline-size;
+              background: linear-gradient(180deg, #7d8c96 0%, #4f5d68 60%, #33404a 100%) center / cover no-repeat; color: #fff;
+              font-family: Roboto, var(--ccx-font-body); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.ccx-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 3cqw 4cqw; font-size: 3.4cqw; }
+.ccx-top > span:nth-child(2) { opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ccx-menu { display: inline-flex; flex-direction: column; gap: 1.1cqw; width: 6cqw; }
+.ccx-menu i { display: block; height: 0.7cqw; border-radius: 1px; background: #fff; }
+.ccx-clock { text-align: center; padding: 2cqw 0 5cqw; }
+.ccx-clock div:first-child { font-size: 11.5cqw; font-weight: 300; letter-spacing: 0.01em; line-height: 1.1; }
+.ccx-clock div:last-child { font-size: 4cqw; opacity: 0.95; }
+.ccx-apps { display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 5cqw; padding: 0 5cqw; align-content: start; min-height: 64cqw; }
+.ccx-app, .ccx-key { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1.8cqw; min-height: 0; padding: 0; border: 0;
+                     background: none; color: #fff; font: inherit; font-weight: 400; cursor: default; }
+.ccx-app:hover, .ccx-key:hover { background: none; }
+.ccx-circle { display: flex; align-items: center; justify-content: center; width: 18cqw; height: 18cqw; border-radius: 50%;
+              background: rgba(255, 255, 255, 0.28); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
+.ccx-circle svg { width: 46%; height: 46%; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
+.ccx-circle.mini { width: 32px; height: 32px; background: var(--ccx-ink); color: #fff; }
+.ccx-circle.mini svg { width: 16px; height: 16px; }
+.ccx-p { font-weight: 700; font-size: 6cqw; }
+.ccx-circle.mini .ccx-p { font-size: 14px; }
+.ccx-cap { font-size: 3.5cqw; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ccx-dots { display: flex; justify-content: center; gap: 2cqw; min-height: 3cqw; margin: 3cqw 0; }
+.ccx-dots button { width: 2cqw; height: 2cqw; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.45); }
+.ccx-dots button.on { background: #fff; }
+.ccx-dots.small { margin: 1cqw 0 2cqw; }
+.ccx-dock { flex: 1 1 auto; display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 3cqw; padding: 0 3cqw; align-content: end; }
+.ccx-key .ccx-circle { width: 13cqw; height: 13cqw; }
+.ccx-key .ccx-cap { font-size: 3.2cqw; max-width: 22cqw; }
+.ccx-key.t-unassigned .ccx-circle { background: transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.ccx-key.st-free .ccx-circle { box-shadow: inset 0 0 0 0.9cqw #2bd17a; }
+.ccx-key.st-busy .ccx-circle { box-shadow: inset 0 0 0 0.9cqw #ff4d42; background: rgba(179, 38, 30, 0.45); }
+.ccx-key.st-ring .ccx-circle { box-shadow: inset 0 0 0 0.9cqw #FF8A1F; background: rgba(255, 138, 31, 0.4); }
+.ccx-key.st-park .ccx-circle { box-shadow: inset 0 0 0 0.6cqw rgba(255, 138, 31, 0.8); }
+.ccx-nav { display: flex; justify-content: center; align-items: center; gap: 22cqw; height: 11cqw; background: rgba(20, 24, 30, 0.82); font-size: 6cqw; }
+.ccx-home { display: block; width: 5cqw; height: 4.4cqw; margin-top: 1.6cqw; border: 0.6cqw solid #fff; border-top: 0; position: relative; }
+.ccx-home::before { content: ""; position: absolute; left: 0.1cqw; top: -2.4cqw; width: 3.6cqw; height: 3.6cqw; border-left: 0.6cqw solid #fff;
+                    border-top: 0.6cqw solid #fff; transform: rotate(45deg); }
+
+/* edit mode affordances */
+.ccx-device.editing .ccx-app, .ccx-device.editing .ccx-key { cursor: pointer; }
+.ccx-device.editing .ccx-app:hover .ccx-circle, .ccx-device.editing .ccx-key:hover .ccx-circle { background: rgba(255, 255, 255, 0.42); }
+.ccx-app.off { opacity: 0.38; }
+.ccx-app.off .ccx-circle { background: transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6); }
+.ccx-badge { position: absolute; top: -1cqw; right: 6cqw; padding: 0.3cqw 1.6cqw; border-radius: 99px; background: #0E1116; font-size: 2.6cqw; }
+.ccx-key.sel .ccx-circle, .ccx-key.add.sel .ccx-circle { outline: 0.9cqw solid #FF8A1F; outline-offset: 0.9cqw; }
+.ccx-key.add .ccx-circle { background: transparent; box-shadow: inset 0 0 0 0.5cqw rgba(255, 255, 255, 0.7); }
+.ccx-key.over .ccx-circle { outline: 0.6cqw dashed #fff; outline-offset: 0.9cqw; }
+.ccx-key.dragging { opacity: 0.35; }
+@media (max-width: 860px) { .ccx-inspector { position: static; max-width: none; } }
 
 /* ---------- login ---------- */
 .login { display: flex; flex-wrap: wrap; min-height: 100vh; }

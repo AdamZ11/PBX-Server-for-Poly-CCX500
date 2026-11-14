@@ -207,7 +207,7 @@ def test_home_screen_editor(client):
 
     # the editor posts the same key_* fields as the phone form, renumbered in display order
     r = client.post(f"/phones/{mac}/screen", data={
-        "wallpaper": "CCXPBX_hatter_02_kapcsolotabla.jpg",
+        "wallpaper": "CCXPBX_hatter_02_kapcsolotabla.jpg", "home_hidden": "redial,bogus,settings",
         "key_type_1": "blf", "key_value_1": "2002", "key_label_1": "Béla",
         "key_type_2": "line", "key_value_2": "1",
         "key_type_3": "speeddial", "key_value_3": "112", "key_label_3": "Segély",
@@ -216,6 +216,8 @@ def test_home_screen_editor(client):
     cfg = prov(client, f"/prov/ccx/{mac}-phone.cfg").text
     assert 'lineKey.1.category="BLF"' in cfg and 'lineKey.2.category="Line"' in cfg and 'lineKey.3.category="EFK"' in cfg
     assert "CCXPBX_hatter_02_kapcsolotabla.jpg" in cfg
+    assert 'homeScreen.redial.enable="0"' in cfg and 'homeScreen.settings.enable="0"' in cfg and "bogus" not in cfg
+    assert 'homeScreen.messages.enable' not in cfg   # visible icons keep the phone default
 
     # an invalid number is rejected and nothing changes
     r = client.post(f"/phones/{mac}/screen", data={"key_type_1": "speeddial", "key_value_1": "abc"}, follow_redirects=False)
