@@ -193,9 +193,9 @@ details.raw pre { margin-top: 12px; }
 /* ---------- home screen editor (the drawn CCX500 is the editor) ---------- */
 .center { text-align: center; }
 .ccx-stage { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
-.ccx-col { flex: 0 1 560px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.ccx-device + p, .ccx-device + .center { margin-top: 44px; }
-.ccx-inspector { flex: 1 1 320px; max-width: 460px; position: sticky; top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.ccx-col { flex: 0 1 700px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.ccx-device + p, .ccx-device + .center { margin-top: 8px; }
+.ccx-inspector { flex: 1 1 300px; max-width: 400px; position: sticky; top: 16px; display: flex; flex-direction: column; gap: 10px; }
 .ccx-inspector h3 { margin: 10px 0 2px; font-size: 14px; }
 .ccx-inspector label { display: flex; flex-direction: column; gap: 4px; }
 .ccx-inspector label.check { flex-direction: row; align-items: center; gap: 8px; }
@@ -215,24 +215,37 @@ details.raw pre { margin-top: 12px; }
 .ccx-mode button { min-height: 32px; padding: 0 16px; border-radius: 999px; background: transparent; color: var(--ccx-slate); border: 0; font-weight: 500; }
 .ccx-mode button.on { background: var(--ccx-ink); color: var(--ccx-paper); }
 
-/* device: corded handset on the left, glass face with the portrait screen, speaker and foot on the right */
-.ccx-device { display: flex; width: 100%; max-width: 560px; filter: drop-shadow(0 22px 30px rgba(14, 17, 22, 0.28)); }
-.ccx-handset { position: relative; flex: 0 0 25%; margin-right: -2%; z-index: 1; border-radius: 22px 22px 14px 14px;
-               background: linear-gradient(90deg, #0d0f11 0%, #2a2e33 38%, #1a1d20 70%, #0b0c0e 100%); }
-.ccx-handset-top { position: absolute; inset: 1.5% 8% auto; height: 10%; border-radius: 16px 16px 6px 6px; background: linear-gradient(180deg, #33383e, #16191c); }
-.ccx-hd { position: absolute; left: 0; right: 0; bottom: 6%; text-align: center; font-size: 10px; color: #5B6573; letter-spacing: 0.04em; }
-.ccx-cord { position: absolute; left: 22%; top: 100%; width: 40%; height: 46px; border-radius: 0 0 40px 40px;
-            background: repeating-linear-gradient(90deg, #111 0 3px, #2a2e33 3px 6px); clip-path: polygon(0 0, 100% 0, 85% 100%, 15% 100%); }
-.ccx-face { flex: 1 1 auto; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden;
-            background: linear-gradient(180deg, #2b2f34 0%, #1d2024 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
-.ccx-bezel { background: #000; padding: 6% 14% 5%; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08); }
-.ccx-speaker { height: 64px; background: radial-gradient(circle, #0a0b0c 1.15px, transparent 1.35px) 0 0 / 5px 5px, #2a2d31; }
-.ccx-foot { display: flex; justify-content: space-between; align-items: center; height: 34px; padding: 0 16px; background: #24272b; }
-.ccx-brand { width: 34px; height: 8px; border-radius: 4px; background: #3a3f45; }
-.ccx-mute { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #5B6573; }
+/* device: Poly CCX500 after the product photo. Box = 445 x 640 (phone 590 + room for the cord);
+   every position below is measured from the photo and given as a percentage of that box. */
+.ccx-device { position: relative; width: 100%; max-width: 720px; aspect-ratio: 445 / 640; container-type: inline-size;
+              filter: drop-shadow(0 24px 28px rgba(14, 17, 22, 0.26)); }
+.ccx-base { position: absolute; left: 0; top: 7.8%; width: 100%; height: 84.4%; border-radius: 1.4cqw;
+            background: linear-gradient(90deg, #22252a 0%, #2d3136 40%, #26292e 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05); }
+.ccx-panel { position: absolute; left: 41.6%; top: 7.8%; width: 58.4%; height: 84.4%; display: flex; flex-direction: column;
+             border-radius: 0 1.4cqw 1.4cqw 0; overflow: hidden; box-shadow: -1px 0 0 rgba(0, 0, 0, 0.6); }
+.ccx-glass { position: relative; flex: 0 0 56.5%; background: linear-gradient(160deg, #15171a 0%, #050607 35%, #000 100%);
+             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(255, 255, 255, 0.06); }
+.ccx-glass .ccx-screen { position: absolute; left: 17.3%; top: 4.9%; width: 62.3%; border-radius: 0.3cqw; }
+.ccx-hwkeys { position: absolute; left: 82.7%; width: 13.5%; top: 0; bottom: 0; color: #e8eaed; }
+.ccx-hwkeys .hk { position: absolute; left: 0; right: 0; display: flex; justify-content: center; transform: translateY(-50%); }
+.ccx-hwkeys .hk svg { width: 3.6cqw; height: 3.6cqw; }
+.ccx-hwkeys .hk:nth-child(1) { top: 13%; } .ccx-hwkeys .hk:nth-child(2) { top: 36%; } .ccx-hwkeys .hk:nth-child(3) { top: 51%; }
+.ccx-hwkeys .hk:nth-child(4) { top: 74%; } .ccx-hwkeys .hk:nth-child(5) { top: 88%; }
+.ccx-grille { flex: 0 0 33.3%; background: radial-gradient(circle, #0c0d0f 0.28cqw, transparent 0.34cqw) 0 0 / 1.1cqw 1.1cqw, #2a2d32;
+              box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.6); }
+.ccx-strip { position: relative; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #2b2e33, #212428); }
+.ccx-logo { width: 9cqw; height: 1.8cqw; border-radius: 1cqw; background: #44494f; }
+.ccx-mute { position: absolute; right: 5%; width: 3.6cqw; height: 3.6cqw; color: #8b939e; }
+.ccx-handset { position: absolute; left: 7.9%; top: 0; width: 21.3%; height: 78.1%; z-index: 2; border-radius: 2.2cqw 2.2cqw 1.6cqw 1.6cqw;
+               background: linear-gradient(90deg, #0b0c0e 0%, #26292d 22%, #3b3f45 46%, #24272b 70%, #0d0e10 100%);
+               box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12), 0.6cqw 0 1.2cqw rgba(0, 0, 0, 0.35); }
+.ccx-handset::before { content: ""; position: absolute; left: 14%; right: 14%; top: 1.2%; height: 12%; border-radius: 1.6cqw 1.6cqw 0.6cqw 0.6cqw;
+                       background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0)); }
+.ccx-hd { position: absolute; left: 0; right: 0; bottom: 4%; text-align: center; font-size: 2.2cqw; color: #6b737e; letter-spacing: 0.02em; }
+.ccx-cord { position: absolute; left: -2%; top: 77.5%; width: 30%; height: 22%; z-index: 1; overflow: visible; }
 
 /* screen: 720x1280 shown at half size; cqw keeps proportions at any width */
-.ccx-screen { position: relative; aspect-ratio: 9 / 16; overflow: hidden; display: flex; flex-direction: column; container-type: inline-size;
+.ccx-screen { aspect-ratio: 9 / 16; overflow: hidden; display: flex; flex-direction: column; container-type: inline-size;
               background: linear-gradient(180deg, #7d8c96 0%, #4f5d68 60%, #33404a 100%) center / cover no-repeat; color: #fff;
               font-family: Roboto, var(--ccx-font-body); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
 .ccx-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 3cqw 4cqw; font-size: 3.4cqw; }
@@ -281,12 +294,18 @@ details.raw pre { margin-top: 12px; }
 .ccx-key.add .ccx-circle { background: transparent; box-shadow: inset 0 0 0 0.5cqw rgba(255, 255, 255, 0.7); }
 .ccx-key.over .ccx-circle { outline: 0.6cqw dashed #fff; outline-offset: 0.9cqw; }
 .ccx-key.dragging { opacity: 0.35; }
+.ccx-device.editing .ccx-key:not(.add) { touch-action: none; cursor: grab; }
+.ccx-ghost { position: absolute; z-index: 5; pointer-events: none; transform: scale(1.12); opacity: 0.92; cursor: grabbing; }
+.ccx-toast { position: absolute; left: 6%; right: 6%; bottom: 14cqw; z-index: 6; padding: 3cqw 4cqw; border-radius: 3cqw;
+             background: rgba(14, 17, 22, 0.92); font-size: 3.4cqw; line-height: 1.35; text-align: center; text-shadow: none; }
+table.verify { width: 100%; font-size: 13px; margin: 8px 0; }
+table.verify td.ok { color: #146C3B; } table.verify td.bad { color: #8E1E17; font-weight: 600; } table.verify td.unknown { color: #7A3E00; }
 @media (max-width: 860px) { .ccx-inspector { position: static; max-width: none; } }
 
 /* ---------- office hours / Off Hours editor ---------- */
 .oh-main { flex: 1 1 560px; min-width: 0; }
 .oh-phone { flex: 0 1 380px; }
-.oh-phone .ccx-device { max-width: 380px; }
+.oh-phone .ccx-device { max-width: 420px; }
 .oh-time { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 380px; font-size: 14px; }
 .oh-time input { flex: 1; }
 .oh-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }

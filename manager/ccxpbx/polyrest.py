@@ -148,3 +148,14 @@ def run(ip: str, password: str, name: str):
 def dial(ip: str, password: str, number: str, line: int = 1):
     return call(ip, password, "POST", "/api/v1/callctrl/dial",
                 {"data": {"Dest": number, "Line": str(line), "Type": "SIP"}})
+
+
+def config_get(ip: str, password: str, params: list[str]) -> dict[str, str | None]:
+    """Values the phone actually uses (POST /api/v1/mgmt/config/get). None = the phone did not report it."""
+    resp = call(ip, password, "POST", "/api/v1/mgmt/config/get", {"data": list(params)})
+    data = resp.get("data") if isinstance(resp, dict) else None
+    if isinstance(data, list):   # some firmware answers with [{"name": ..., "value": ...}]
+        data = {d.get("name") or d.get("Name"): d.get("value", d.get("Value")) for d in data if isinstance(d, dict)}
+    if not isinstance(data, dict):
+        raise PolyRestError(f"Váratlan válasz a telefontól: {str(resp)[:200]}")
+    return {p: (None if data.get(p) in (None, "") else str(data.get(p))) for p in params}

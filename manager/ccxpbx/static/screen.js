@@ -51,7 +51,6 @@
   let appPage = 0, dockPage = 0;
   let states = {};
   let dirty = false;
-  let dragFrom = -1;
   const extName = Object.fromEntries(data.exts.map((e) => [e.ext, e.name]));
   const ownExts = new Set(data.lines.map((l) => l.ext));
   const icons = data.homeIcons.filter((i) => i.key !== "application" || data.microbrowser);
@@ -109,7 +108,12 @@
         type: "button", class: `ccx-app${off ? " off" : ""}`,
         title: editing ? `${ic.desc}: koppints az ${off ? "megjelenítéshez" : "elrejtéshez"}` : ic.desc,
         "aria-pressed": editing ? String(!off) : false,
-        onclick: () => { if (!editing) return; off ? hidden.delete(ic.key) : hidden.add(ic.key); touch(); render(); },
+        onclick: (e) => { if (!editing || e.currentTarget.dataset.moved) return; off ? hidden.delete(ic.key) : hidden.add(ic.key); touch(); render(); },
+        onpointerdown: (e) => { const b = e.currentTarget, x = e.clientX, y = e.clientY; delete b.dataset.moved;
+          const mv = (ev) => { if (Math.hypot(ev.clientX - x, ev.clientY - y) > 10 && !b.dataset.moved) { b.dataset.moved = "1";
+            toast("Az ikonok sorrendjét a telefon szoftvere rögzíti, ezért nem húzhatók. Koppintással elrejtheted őket."); } };
+          window.addEventListener("pointermove", mv);
+          window.addEventListener("pointerup", () => window.removeEventListener("pointermove", mv), { once: true }); },
       }, el("span", { class: "ccx-circle", html: GLYPH[ic.key] }), el("span", { class: "ccx-cap", text: ic.label }),
          editing && off ? el("span", { class: "ccx-badge", text: "rejtve" }) : null));
     });
@@ -134,20 +138,10 @@
       const st = keyState(k);
       const sel = selected && selected.key === i && keys.length;
       dock.append(el("button", {
-        type: "button", class: `ccx-key t-${k.type} st-${st || "none"}${sel ? " sel" : ""}`, draggable: editing ? "true" : false,
-        title: `${i + 1}. gomb · ${TYPES[k.type] || ""}`,
-        onclick: () => { if (!editing) return; materialize(); selected = { key: i }; render(); },
-        ondragstart: (e) => { dragFrom = i; e.dataTransfer.effectAllowed = "move"; e.currentTarget.classList.add("dragging"); },
-        ondragend: (e) => e.currentTarget.classList.remove("dragging"),
-        ondragover: (e) => { if (dragFrom >= 0) { e.preventDefault(); e.currentTarget.classList.add("over"); } },
-        ondragleave: (e) => e.currentTarget.classList.remove("over"),
-        ondrop: (e) => {
-          e.preventDefault(); e.currentTarget.classList.remove("over");
-          if (dragFrom < 0 || dragFrom === i) return;
-          materialize();
-          const [m] = keys.splice(dragFrom, 1); keys.splice(i, 0, m);
-          selected = { key: i }; dragFrom = -1; touch(); render();
-        },
+        type: "button", class: `ccx-key t-${k.type} st-${st || "none"}${sel ? " sel" : ""}`, "data-i": i,
+        title: `${i + 1}. gomb · ${TYPES[k.type] || ""}${editing ? " · húzd az áthelyezéshez" : ""}`,
+        onpointerdown: (e) => { if (editing) startDrag(e, i); },
+        onclick: () => { if (!editing || justDragged) return; materialize(); selected = { key: i }; render(); },
       }, el("span", { class: "ccx-circle", html: GLYPH[k.type] || "" }), el("span", { class: "ccx-cap", text: keyText(k) })));
     });
     dots($("pv-dock-dots"), dockPages, dockPage, (p) => { dockPage = p; renderScreen(); });
@@ -155,6 +149,62 @@
     $("pv-note").textContent = editing
       ? "Koppints egy ikonra az elrejtéshez, egy gombra a szerkesztéshez, húzd a gombokat az átrendezéshez."
       : (keys.length ? `${keys.length} gomb · a pöttyök és keretek a mellékek élő állapotát mutatják` : "Automatikus kiosztás: a telefon a vonalgombokat mutatja.");
+  }
+
+  // Drag a key over another one to move it there; works with mouse, pen and touch.
+  let justDragged = false;
+  function startDrag(e, from) {
+    const src = e.currentTarget, x0 = e.clientX, y0 = e.clientY;
+    let ghost = null, target = null;
+    try { src.setPointerCapture(e.pointerId); } catch (_) { /* synthetic events */ }
+    const move = (ev) => {
+      if (!ghost) {
+        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+        const r = src.getBoundingClientRect();
+        ghost = src.cloneNode(true);
+        ghost.classList.add("ccx-ghost");
+        ghost.style.width = `${r.width}px`;
+        ghost.dataset.dx = String(x0 - r.left); ghost.dataset.dy = String(y0 - r.top);
+        $("pv-screen").append(ghost);
+        src.classList.add("dragging");
+      }
+      const scr = $("pv-screen").getBoundingClientRect();
+      ghost.style.left = `${ev.clientX - scr.left - +ghost.dataset.dx}px`;
+      ghost.style.top = `${ev.clientY - scr.top - +ghost.dataset.dy}px`;
+      ghost.hidden = true;
+      const under = document.elementFromPoint(ev.clientX, ev.clientY);
+      ghost.hidden = false;
+      const t = under && under.closest(".ccx-key[data-i]");
+      if (target && target !== t) target.classList.remove("over");
+      target = t && t !== src ? t : null;
+      if (target) target.classList.add("over");
+    };
+    const up = () => {
+      src.removeEventListener("pointermove", move);
+      src.removeEventListener("pointerup", up);
+      src.removeEventListener("pointercancel", up);
+      if (!ghost) return;
+      ghost.remove();
+      src.classList.remove("dragging");
+      justDragged = true;
+      setTimeout(() => { justDragged = false; }, 0);
+      if (!target) return;
+      const to = +target.dataset.i;
+      materialize();
+      const [m] = keys.splice(from, 1); keys.splice(to, 0, m);
+      selected = { key: to }; touch(); render();
+    };
+    src.addEventListener("pointermove", move);
+    src.addEventListener("pointerup", up);
+    src.addEventListener("pointercancel", up);
+  }
+
+  let toastTimer = 0;
+  function toast(text) {
+    const t = $("pv-toast");
+    t.textContent = text; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
   }
 
   function dots(box, pages, current, go) {
@@ -256,7 +306,14 @@
       el("input", { type: "checkbox", checked: !hidden.has(ic.key), onchange: (e) => { e.target.checked ? hidden.delete(ic.key) : hidden.add(ic.key); touch(); renderScreen(); } }),
       ` ${ic.desc}`)));
     if (!data.microbrowser) list.append(el("small", { class: "muted", text: "Az Alkalmazások ikon a Beállításokban kapcsolható be (CCXPBX oldal)." }));
-    box.append(list, el("p", { class: "muted small", text: "Az ikonok sorrendjét és feliratát a telefon szabja meg, csak elrejteni lehet őket." }));
+    box.append(list, el("p", { class: "muted small", text: "Az ikonok sorrendjét és feliratát a telefon szoftvere rögzíti, ezért nem húzhatók; csak elrejteni lehet őket." }));
+
+    box.append(el("h3", { text: "Ellenőrzés a telefonon" }),
+      el("p", { class: "muted small", text: "Mentés után kiolvassa a telefonból (REST API), milyen értékeket használ ténylegesen." }),
+      el("div", { class: "row wrap" },
+        el("button", { type: "button", class: "secondary small", id: "verify-btn", text: "Ellenőrzés most", onclick: verify }),
+        el("button", { type: "button", class: "secondary small", text: "Telefon alkalmazás újraindítása", onclick: restartPhone })),
+      el("div", { id: "verify-out" }));
 
     box.append(el("h3", { text: `Gombok (${keys.length} / ${data.maxKeys})` }), el("div", { class: "row wrap" },
       el("button", { type: "button", class: "secondary small", text: "Minden mellék BLF-re", onclick: () => {
@@ -266,6 +323,42 @@
         touch(); render(); } }),
       el("button", { type: "button", class: "danger small", text: "Gombok ürítése", onclick: () => {
         if (!keys.length || confirm("Törlöd az összes gombot? Mentés után a telefon maga rendezi a vonalgombokat.")) { keys = []; touch(); render(); } } })));
+  }
+
+  async function verify() {
+    const out = $("verify-out"), btn = $("verify-btn");
+    if (!out) return;
+    if (dirty) { out.replaceChildren(el("p", { class: "flash warn", text: "Előbb mentsd el a változásokat, utána ellenőrizd." })); return; }
+    btn.disabled = true;
+    out.replaceChildren(el("p", { class: "muted small", text: "Lekérdezés a telefontól…" }));
+    try {
+      const d = await (await fetch(`/phones/${data.mac}/screen/verify`, { cache: "no-store" })).json();
+      if (d.error) { out.replaceChildren(el("p", { class: "flash err", text: d.error })); return; }
+      const t = el("table", { class: "verify" }, el("tr", {}, el("th", { text: "Ikon" }), el("th", { text: "Szerver" }), el("th", { text: "Telefon" })));
+      let unknown = 0, differs = 0;
+      const show = (v) => v === "0" ? "rejtett" : v === "1" ? "látható" : "alapérték";
+      d.rows.forEach((r) => {
+        const want = r.expected || "", got = r.phone;
+        let cls = "ok", text = show(got);
+        if (got == null) { cls = "unknown"; text = "nem ismeri"; unknown++; }
+        else if (want && want !== got) { cls = "bad"; differs++; }
+        t.append(el("tr", {}, el("td", { text: r.desc }), el("td", { text: show(want) }), el("td", { class: cls, text })));
+      });
+      const msgs = [];
+      if (unknown === d.rows.length) msgs.push(["warn", "A telefon egyik homeScreen paramétert sem ismeri, vagyis ez a CCX500 firmware nem engedi elrejteni a kezdőképernyő ikonjait."]);
+      else if (differs) msgs.push(["warn", "A telefon más értéket használ, mint amit a szerver küld. Valószínűleg a telefonon vagy a webfelületén tett beállítás (override) felülírja: a telefon oldalán a Telefon oldali override-ok törlése segít, vagy nem kapta meg a konfigot (Konfig szinkronizálás)."]);
+      else msgs.push(["ok", "A telefon átvette a beállításokat. Ha a kijelzőn még nem látszik a változás, indítsd újra a telefon alkalmazását."]);
+      out.replaceChildren(t, ...msgs.map(([k, m]) => el("p", { class: `flash ${k}`, text: m })));
+    } catch (_) {
+      out.replaceChildren(el("p", { class: "flash err", text: "A szerver nem válaszolt." }));
+    } finally { btn.disabled = false; }
+  }
+
+  async function restartPhone() {
+    if (!confirm("Újraindítod a telefon alkalmazását? Kb. fél percig nem lesz használható.")) return;
+    await fetch(`/phones/${data.mac}/action/restart`, { method: "POST", body: new URLSearchParams() });
+    const out = $("verify-out");
+    if (out) out.replaceChildren(el("p", { class: "flash ok", text: "Újraindítás elküldve. Kb. fél perc múlva ellenőrizd újra." }));
   }
 
   function focusInspector() { const f = $("inspector").querySelector("select, input"); if (f) f.focus(); }

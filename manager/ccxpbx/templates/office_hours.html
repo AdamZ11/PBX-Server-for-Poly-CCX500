@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_ccx.html" import device %}
 {% block title %}Munkaidő · CCXPBX{% endblock %}
 {% block content %}
 <form method="post" action="/office-hours" id="oh-form">
@@ -44,11 +45,7 @@
     <div class="ccx-mode" role="group" aria-label="Előnézet napja" id="oh-day-pick"></div>
     <label class="oh-time">Időpont: <b id="oh-time-label" class="mono"></b>
       <input type="range" min="0" max="23.75" step="0.25" id="oh-time"></label>
-    <div class="ccx-device" aria-label="Poly CCX500 előnézet">
-      <div class="ccx-handset"><div class="ccx-handset-top"></div><span class="ccx-hd">HD Voice</span><div class="ccx-cord"></div></div>
-      <div class="ccx-face">
-        <div class="ccx-bezel">
-          <div class="ccx-screen" id="oh-screen">
+    {% call device("oh-screen") %}
             <div class="ccx-top"><span class="ccx-menu" aria-hidden="true"><i></i><i></i><i></i></span><span></span><span></span></div>
             <div class="ccx-clock"><div id="oh-clock"></div><div id="oh-date"></div></div>
             <div class="ccx-apps">
@@ -59,12 +56,7 @@
             <div class="ccx-dock"></div>
             <div class="ccx-nav"><span>&#8592;</span><span class="ccx-home"></span></div>
             <div class="ccx-offhours" id="oh-overlay"><b>Off Hours</b><span>Koppints a felébresztéshez</span></div>
-          </div>
-        </div>
-        <div class="ccx-speaker"></div>
-        <div class="ccx-foot"><span class="ccx-brand"></span><span class="ccx-mute"></span></div>
-      </div>
-    </div>
+    {% endcall %}
     <p class="center" id="oh-state"></p>
   </div>
 </div>

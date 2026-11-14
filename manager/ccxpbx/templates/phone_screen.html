@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_ccx.html" import device %}
 {% block title %}Főképernyő · {{ phone.label or phone.mac }} · CCXPBX{% endblock %}
 {% block content %}
 <form method="post" action="/phones/{{ phone.mac }}/screen" id="screen-form">
@@ -21,11 +22,7 @@
       <button type="button" role="tab" data-mode="view">Így fog kinézni</button>
     </div>
 
-    <div class="ccx-device" aria-label="Poly CCX500">
-      <div class="ccx-handset"><div class="ccx-handset-top"></div><span class="ccx-hd">HD Voice</span><div class="ccx-cord"></div></div>
-      <div class="ccx-face">
-        <div class="ccx-bezel">
-          <div class="ccx-screen" id="pv-screen">
+    {% call device("pv-screen") %}
             <div class="ccx-top"><span class="ccx-menu" aria-hidden="true"><i></i><i></i><i></i></span><span id="pv-status"></span><span></span></div>
             <div class="ccx-clock"><div id="pv-time"></div><div id="pv-date"></div></div>
             <div class="ccx-apps" id="pv-apps"></div>
@@ -33,12 +30,8 @@
             <div class="ccx-dock" id="pv-dock"></div>
             <div class="ccx-dots small" id="pv-dock-dots"></div>
             <div class="ccx-nav"><span>&#8592;</span><span class="ccx-home"></span></div>
-          </div>
-        </div>
-        <div class="ccx-speaker"></div>
-        <div class="ccx-foot"><span class="ccx-brand"></span><span class="ccx-mute" title="Némítás"></span></div>
-      </div>
-    </div>
+            <div class="ccx-toast" id="pv-toast" hidden></div>
+    {% endcall %}
     <p class="muted small center" id="pv-note"></p>
   </div>
 

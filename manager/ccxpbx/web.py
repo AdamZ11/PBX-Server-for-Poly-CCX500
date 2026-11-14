@@ -526,6 +526,28 @@ def phone_screen(mac: str, request: Request, conn=Depends(get_db), _=Depends(req
     return render(request, conn, "phone_screen.html", phone=phone, editor=editor, key_types=plan.KEY_TYPES)
 
 
+@router.get("/phones/{mac}/screen/verify")
+async def phone_screen_verify(mac: str, conn=Depends(get_db), _=Depends(require_login)):
+    """Compare the home screen icon settings the server sends with what the phone reports via REST."""
+    phone = db.load_phone(conn, mac)
+    if not phone:
+        return JSONResponse({"error": "Ismeretlen telefon"}, status_code=404)
+    snap = db.snapshot(conn)
+    expected = {**poly.site_params(snap), **poly.phone_params(snap, phone)}
+    params = [f"homeScreen.{k}.enable" for k in plan.HOME_ICON_KEYS]
+    contacts, _err = await run_in_threadpool(ami.safe_call, lambda a: a.contacts(), [])
+    ip = services.phone_ip(conn, mac, contacts or [])
+    if not ip:
+        return JSONResponse({"error": "A telefon IP címe nem ismert (nincs regisztrálva?)."})
+    try:
+        got = await run_in_threadpool(polyrest.config_get, ip, db.get_settings(conn)["phone_admin_password"], params)
+    except polyrest.PolyRestError as exc:
+        return JSONResponse({"error": str(exc)})
+    rows = [{"key": k, "desc": d, "expected": expected.get(f"homeScreen.{k}.enable", ""), "phone": got.get(f"homeScreen.{k}.enable")}
+            for k, _label, d in plan.HOME_ICONS]
+    return JSONResponse({"rows": rows, "ip": ip}, headers={"Cache-Control": "no-store"})
+
+
 @router.post("/phones/{mac}/screen")
 async def phone_screen_save(mac: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
     phone = db.load_phone(conn, mac)

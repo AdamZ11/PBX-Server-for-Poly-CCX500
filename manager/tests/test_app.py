@@ -281,3 +281,31 @@ def test_update_watcher(client):
     client.post("/updates/rm-rf")   # unknown actions are ignored
     assert (d / "request").read_text() == "apply"
     (d / "request").unlink()
+
+
+def test_home_screen_verify(client, monkeypatch):
+    from ccxpbx import polyrest, services
+    login(client)
+    mac = "0004f2aabbcc"
+    monkeypatch.setattr(services, "phone_ip", lambda conn, m, contacts=None: "")
+    assert "IP" in client.get(f"/phones/{mac}/screen/verify").json()["error"]
+
+    monkeypatch.setattr(services, "phone_ip", lambda conn, m, contacts=None: "192.0.2.10")
+    seen = {}
+
+    def fake_get(ip, password, params):
+        seen["params"] = params
+        return {p: ("0" if p == "homeScreen.redial.enable" else None) for p in params}
+    monkeypatch.setattr(polyrest, "config_get", fake_get)
+    d = client.get(f"/phones/{mac}/screen/verify").json()
+    rows = {r["key"]: r for r in d["rows"]}
+    assert "homeScreen.redial.enable" in seen["params"] and rows["redial"]["phone"] == "0"
+    assert rows["redial"]["expected"] == "0" and rows["messages"]["phone"] is None
+
+
+def test_polyrest_config_get_formats(monkeypatch):
+    from ccxpbx import polyrest
+    monkeypatch.setattr(polyrest, "call", lambda *a, **k: {"Status": "2000", "data": {"a.b": "1", "c.d": ""}})
+    assert polyrest.config_get("x", "y", ["a.b", "c.d", "e.f"]) == {"a.b": "1", "c.d": None, "e.f": None}
+    monkeypatch.setattr(polyrest, "call", lambda *a, **k: {"data": [{"name": "a.b", "value": "0"}]})
+    assert polyrest.config_get("x", "y", ["a.b"]) == {"a.b": "0"}
