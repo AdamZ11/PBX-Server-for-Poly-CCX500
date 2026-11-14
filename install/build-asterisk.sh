@@ -3,6 +3,7 @@
 # and Raspberry Pi OS / Debian on arm64 or armhf.
 #   ASTERISK_MAJOR=22 ./build-asterisk.sh
 set -euo pipefail
+trap 'echo -e "\033[1;31m[asterisk] FAILED at line $LINENO: $BASH_COMMAND\033[0m" >&2' ERR
 
 ASTERISK_MAJOR="${ASTERISK_MAJOR:-22}"
 SRC_DIR="${SRC_DIR:-/usr/src}"
@@ -50,13 +51,19 @@ log "Building $(cat .version 2>/dev/null || echo "Asterisk ${ASTERISK_MAJOR}")"
 
 ./configure --with-pjproject-bundled --with-jansson-bundled=no --libdir=/usr/lib >/dev/null
 make menuselect.makeopts >/dev/null
-menuselect/menuselect \
-  --disable BUILD_NATIVE \
-  --enable CORE-SOUNDS-EN-WAV --enable CORE-SOUNDS-EN-G722 \
-  --enable MOH-OPSOUND-WAV --enable MOH-OPSOUND-G722 \
-  --enable EXTRA-SOUNDS-EN-WAV --enable EXTRA-SOUNDS-EN-G722 \
-  --disable chan_mgcp --disable chan_skinny --disable chan_unistim \
-  menuselect.makeopts
+# Apply options one by one: a module that no longer exists in this Asterisk
+# version (e.g. chan_mgcp / chan_skinny were removed in 21) only warns.
+MENUSELECT_OPTS=(
+  "--disable BUILD_NATIVE"
+  "--enable CORE-SOUNDS-EN-WAV" "--enable CORE-SOUNDS-EN-G722"
+  "--enable MOH-OPSOUND-WAV" "--enable MOH-OPSOUND-G722"
+  "--enable EXTRA-SOUNDS-EN-WAV" "--enable EXTRA-SOUNDS-EN-G722"
+  "--disable chan_mgcp" "--disable chan_skinny" "--disable chan_unistim"
+)
+for opt in "${MENUSELECT_OPTS[@]}"; do
+  # shellcheck disable=SC2086
+  menuselect/menuselect $opt menuselect.makeopts >/dev/null 2>&1 || log "menuselect: '${opt#--* }' not available, skipped"
+done
 
 # Keep memory use sane on small Raspberry Pis
 MEM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)

@@ -7,6 +7,7 @@
 #
 # Safe to re-run (upgrades the manager, keeps database and secrets).
 set -euo pipefail
+trap 'echo -e "\033[1;31m[ccxpbx] FAILED at line $LINENO: $BASH_COMMAND\033[0m" >&2' ERR
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOST=""
