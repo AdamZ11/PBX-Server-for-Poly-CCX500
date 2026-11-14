@@ -114,7 +114,9 @@ def uploaded_files(mac: str) -> list[dict]:
         d = config.PROV_DIR / sub
         if not d.is_dir():
             continue
-        for f in sorted(d.glob(f"{mac}*")):
+        for f in sorted(d.glob(f"*{mac}*")):
+            if f.name.startswith("."):
+                continue
             st = f.stat()
             files.append({"dir": sub, "name": f.name, "size": st.st_size, "mtime": st.st_mtime})
     return files

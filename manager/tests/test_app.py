@@ -75,9 +75,14 @@ def test_full_flow(client):
     assert prov(client, "/prov/logs/0004f2aabbcc-app.log", "PUT", b"line1\n").status_code == 201
     assert prov(client, "/prov/logs/0004f2aabbcc-app.log", "PUT", b"line2\n").status_code == 201
     assert (config.PROV_DIR / "logs" / "0004f2aabbcc-app.log").read_bytes() == b"line1\nline2\n"
+    core = "encl.0004f2aabbcc-9.5.1.0067-CCX500-core.tApp0.11.1791827128.gz.tar.gz"
+    assert prov(client, f"/prov/logs/{core}", "PUT", b"core").status_code == 201
+    assert prov(client, "/prov/logs/encl.000000000000-core.tar.gz", "PUT", b"x").status_code == 403
     assert prov(client, "/prov/firmware/evil.ld", "PUT", b"x").status_code == 403
     assert prov(client, "/prov/overrides/notamac.cfg", "PUT", b"x").status_code == 403
-    assert "0004f2aabbcc-app.log" in client.get("/phones/0004f2aabbcc").text
+    page = client.get("/phones/0004f2aabbcc").text
+    assert "0004f2aabbcc-app.log" in page and core in page
+    assert client.get(f"/phones/0004f2aabbcc/files/logs/{core}").content == b"core"
 
     seen = db.connect().execute("SELECT model, firmware FROM seen_devices").fetchone()
     assert (seen["model"], seen["firmware"]) == ("CCX_500", "8.1.3.1301")

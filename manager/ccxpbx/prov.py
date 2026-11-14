@@ -11,6 +11,8 @@ router = APIRouter()
 
 _SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _MAC_IN_NAME = re.compile(r"^([0-9a-fA-F]{12})")
+# Core dumps are named e.g. "encl.<mac>-9.5.1.0067-CCX500-core....tar.gz"
+_MAC_ANYWHERE = re.compile(r"(?<![0-9a-fA-F])((?!000000000000)[0-9a-fA-F]{12})(?![0-9a-fA-F])")
 _auth: httpauth.Authenticator | None = None
 
 
@@ -101,9 +103,10 @@ async def prov_put(path: str, request: Request, conn=Depends(get_db)):
     if not split or split[0] not in config.UPLOAD_DIRS:
         return PlainTextResponse("Forbidden", status_code=403)
     sub, name = split
-    if not _MAC_IN_NAME.match(name):
+    mac_match = _MAC_ANYWHERE.search(name)
+    if not mac_match:
         return PlainTextResponse("Forbidden", status_code=403)
-    _seen(conn, request, name.lower())
+    _seen(conn, request, mac_match.group(1).lower() + "-" + name.lower())
 
     body = bytearray()
     async for chunk in request.stream():

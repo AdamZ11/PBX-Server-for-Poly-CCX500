@@ -20,5 +20,5 @@ SECRET_KEY = os.environ.get("CCXPBX_SECRET_KEY", "")
 # Directories phones may upload into (relative to PROV_DIR), see master config.
 UPLOAD_DIRS = ("logs", "overrides", "contacts", "calllists")
 FIRMWARE_DIR = "firmware"
-MAX_UPLOAD = 10 * 1024 * 1024
+MAX_UPLOAD = 50 * 1024 * 1024   # core dump archives can be several MB
 MAX_LOG_SIZE = 5 * 1024 * 1024

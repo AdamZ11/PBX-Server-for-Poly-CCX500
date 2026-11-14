@@ -145,9 +145,12 @@ DEFAULT_SETTINGS = {
 SECRET_SETTINGS = ("prov_password", "phone_admin_password")
 
 
+# No look-alike characters (l I 1 O o 0): these passwords get typed in by hand on phones.
+UNAMBIGUOUS = "".join(c for c in string.ascii_letters + string.digits if c not in "lI1Oo0")
+
+
 def gen_secret(length: int = 20) -> str:
-    alphabet = string.ascii_letters + string.digits
-    return "".join(secrets.choice(alphabet) for _ in range(length))
+    return "".join(secrets.choice(UNAMBIGUOUS) for _ in range(length))
 
 
 def gen_pin(length: int = 4) -> str:

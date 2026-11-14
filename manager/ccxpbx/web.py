@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from . import ami, asterisk_gen, config, db, httpauth, plan, poly, polyrest, services
@@ -411,11 +411,13 @@ def phone_config(mac: str, request: Request, conn=Depends(get_db), _=Depends(req
 
 @router.get("/phones/{mac}/files/{sub}/{name}", response_class=HTMLResponse)
 def phone_file(mac: str, sub: str, name: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
-    if sub not in config.UPLOAD_DIRS or not name.startswith(mac) or "/" in name or ".." in name:
+    if sub not in config.UPLOAD_DIRS or mac not in name or "/" in name or ".." in name:
         return redirect(f"/phones/{mac}")
     f = config.PROV_DIR / sub / name
     if not f.is_file():
         return redirect(f"/phones/{mac}")
+    if f.suffix in (".gz", ".tar", ".zip"):
+        return FileResponse(f, filename=name)
     data = f.read_bytes()[-200_000:].decode("utf-8", "replace")
     return render(request, conn, "text_view.html", title=f"{sub}/{name}", text=data, back=f"/phones/{mac}")
 

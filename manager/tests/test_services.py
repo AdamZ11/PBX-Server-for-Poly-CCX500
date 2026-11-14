@@ -1,6 +1,11 @@
 import pytest
 
-from ccxpbx import ami, services
+from ccxpbx import ami, db, services
+
+
+def test_generated_secrets_have_no_lookalikes():
+    s = "".join(db.gen_secret(200) for _ in range(20))
+    assert not set(s) & set("lI1Oo0")
 
 
 class FakeAMI:
