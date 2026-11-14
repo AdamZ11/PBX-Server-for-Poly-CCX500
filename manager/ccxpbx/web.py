@@ -544,7 +544,13 @@ async def phone_screen_verify(mac: str, conn=Depends(get_db), _=Depends(require_
         got, raw = await run_in_threadpool(lambda: polyrest.config_get(ip, db.get_settings(conn)["phone_admin_password"], params, raw=True))
     except polyrest.PolyRestError as exc:
         return JSONResponse({"error": str(exc)})
-    rows = [{"key": k, "desc": d, "expected": expected.get(f"homeScreen.{k}.enable", ""), "phone": got.get(f"homeScreen.{k}.enable")}
+    data = raw.get("data") if isinstance(raw, dict) else None
+
+    def source(param: str) -> str:   # where the phone's value comes from: config, default, web, local ...
+        v = data.get(param) if isinstance(data, dict) else None
+        return str(v.get("Source") or v.get("source") or "") if isinstance(v, dict) else ""
+    rows = [{"key": k, "desc": d, "expected": expected.get(f"homeScreen.{k}.enable", ""), "phone": got.get(f"homeScreen.{k}.enable"),
+             "source": source(f"homeScreen.{k}.enable")}
             for k, _label, d in plan.HOME_ICONS if k not in plan.HOME_ICON_FIXED]
     return JSONResponse({"rows": rows, "ip": ip, "raw": json.dumps(raw, ensure_ascii=False)[:1500]}, headers={"Cache-Control": "no-store"})
 

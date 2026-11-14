@@ -356,7 +356,7 @@
     try {
       const d = await (await fetch(`/phones/${data.mac}/screen/verify`, { cache: "no-store" })).json();
       if (d.error) { out.replaceChildren(el("p", { class: "flash err", text: d.error })); return; }
-      const t = el("table", { class: "verify" }, el("tr", {}, el("th", { text: "Ikon" }), el("th", { text: "Szerver" }), el("th", { text: "Telefon" })));
+      const t = el("table", { class: "verify" }, el("tr", {}, el("th", { text: "Ikon" }), el("th", { text: "Szerver" }), el("th", { text: "Telefon" }), el("th", { text: "Forrás" })));
       let unknown = 0, differs = 0;
       const show = (v) => v === "0" ? "rejtett" : v === "1" ? "látható" : (v == null || v === "" ? "alapérték" : `„${v}”`);
       d.rows.forEach((r) => {
@@ -365,11 +365,14 @@
         if (got == null) { cls = "unknown"; text = "nem ismeri"; unknown++; }
         else if (want && want !== got && (got === "0" || got === "1")) { cls = "bad"; differs++; }
         else if (got !== "0" && got !== "1") cls = "unknown";
-        t.append(el("tr", {}, el("td", { text: r.desc }), el("td", { text: show(want) }), el("td", { class: cls, text })));
+        const src = { config: "szerver", default: "gyári", web: "webfelület", local: "telefonon állítva", device: "eszköz" }[r.source] || r.source || "";
+        if (r.source === "web" || r.source === "local") { cls = "bad"; differs++; }
+        t.append(el("tr", {}, el("td", { text: r.desc }), el("td", { text: show(want) }), el("td", { class: cls, text }), el("td", { class: "muted", text: src })));
       });
       const msgs = [];
       if (unknown === d.rows.length) msgs.push(["warn", "A telefon egyik homeScreen paramétert sem ismeri, vagyis ez a CCX500 firmware nem engedi elrejteni a kezdőképernyő ikonjait."]);
       else if (differs) msgs.push(["warn", "A telefon más értéket használ, mint amit a szerver küld. Valószínűleg a telefonon vagy a webfelületén tett beállítás (override) felülírja: a telefon oldalán a Telefon oldali override-ok törlése segít, vagy nem kapta meg a konfigot (Konfig szinkronizálás)."]);
+      else if (!d.rows.some((r) => r.expected === "0")) msgs.push(["ok", "A telefon ismeri a paramétereket. Most egy ikon sincs elrejtve: rejts el egyet, ments, és ellenőrizd újra; akkor a Forrás oszlopban 'szerver' és 'rejtett' kell álljon."]);
       else msgs.push(["ok", "A telefon átvette a beállításokat. Ha a kijelzőn még nem látszik a változás, indítsd újra a telefon alkalmazását."]);
       const rawBox = el("details", { class: "verify-raw" }, el("summary", { text: "A telefon nyers válasza" }), el("pre", { class: "mono small", text: d.raw || "" }));
       out.replaceChildren(t, ...msgs.map(([k, m]) => el("p", { class: `flash ${k}`, text: m })), rawBox);
