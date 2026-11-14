@@ -1,5 +1,6 @@
 """Operations shared by the web UI and the CLI."""
 import re
+import socket
 
 from . import ami, asterisk_gen, config, db
 
@@ -63,6 +64,35 @@ def apply_config(conn) -> dict:
     if not result["error"]:
         db.set_setting(conn, "dirty", "0")
     return result
+
+
+def local_ips() -> set[str]:
+    """IPv4 addresses of this host (best effort, no external traffic is sent)."""
+    ips = set()
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ips.add(info[4][0])
+    except OSError:
+        pass
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("192.0.2.1", 9))  # UDP connect only picks the outgoing interface
+            ips.add(s.getsockname()[0])
+    except OSError:
+        pass
+    ips.discard("127.0.0.1")
+    ips.discard("127.0.1.1")
+    return ips
+
+
+def server_host_mismatch(server_host: str) -> list[str] | None:
+    """If server_host is an IPv4 address that this host does not have, return the real IPs."""
+    if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", server_host or ""):
+        return None
+    ips = local_ips()
+    if not ips or server_host in ips:
+        return None
+    return sorted(ips)
 
 
 def restart_asterisk(a) -> None:

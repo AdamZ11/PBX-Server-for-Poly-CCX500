@@ -19,6 +19,15 @@ class FakeAMI:
         return ""
 
 
+def test_server_host_mismatch(monkeypatch):
+    monkeypatch.setattr(services, "local_ips", lambda: {"192.168.10.116"})
+    assert services.server_host_mismatch("192.168.10.132") == ["192.168.10.116"]
+    assert services.server_host_mismatch("192.168.10.116") is None
+    assert services.server_host_mismatch("pbx.local") is None  # DNS names are not checked
+    monkeypatch.setattr(services, "local_ips", lambda: set())
+    assert services.server_host_mismatch("192.168.10.132") is None
+
+
 def test_restart_dropped_connection_is_success():
     services.restart_asterisk(FakeAMI(ami.AMIError("AMI kapcsolat lezárult")))
     services.restart_asterisk(FakeAMI(None))

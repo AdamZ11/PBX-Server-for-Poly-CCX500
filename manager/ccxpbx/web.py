@@ -134,8 +134,9 @@ async def dashboard(request: Request, conn=Depends(get_db), _=Depends(require_lo
         "extensions": conn.execute("SELECT COUNT(*) FROM extensions").fetchone()[0],
         "phones": conn.execute("SELECT COUNT(*) FROM phones").fetchone()[0],
     }
+    mismatch = services.server_host_mismatch(db.get_settings(conn)["server_host"])
     return render(request, conn, "dashboard.html", live=live, ami_error=err, phones=phones,
-                  unknown=unknown, counts=counts)
+                  unknown=unknown, counts=counts, ip_mismatch=mismatch)
 
 
 # ---------------------------------------------------------------- extensions
