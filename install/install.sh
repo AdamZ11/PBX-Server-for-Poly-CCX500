@@ -32,7 +32,7 @@ log() { echo -e "\033[1;32m[ccxpbx]\033[0m $*"; }
 grep -qiE 'debian|raspbian' /etc/os-release || log "WARNING: not a Debian based system, continuing anyway"
 
 if [[ -z "$HOST" ]]; then
-  HOST=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')
+  HOST=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}' || true)
 fi
 log "Server address: ${HOST:-unknown} (change later in the web UI -> Beállítások)"
 
@@ -42,7 +42,7 @@ apt-get install -y -qq python3 python3-venv python3-pip openssl ca-certificates 
 
 # ------------------------------------------------------------------ Asterisk
 if [[ $SKIP_ASTERISK -eq 0 ]]; then
-  if command -v asterisk >/dev/null && asterisk -V | grep -q "Asterisk 22"; then
+  if command -v asterisk >/dev/null && [[ "$(asterisk -V 2>/dev/null)" == "Asterisk 22"* ]]; then
     log "Asterisk 22 already installed: $(asterisk -V)"
   else
     bash "$REPO_DIR/install/build-asterisk.sh"
@@ -178,7 +178,7 @@ if [[ $FIRST_RUN -eq 1 ]]; then
   echo
   echo "  !!! Save the ADMIN_PASSWORD above, it is shown only once."
 else
-  echo "$SECRETS" | grep -v ADMIN_PASSWORD | sed 's/^/  /'
+  echo "$SECRETS" | grep -v ADMIN_PASSWORD | sed 's/^/  /' || true
 fi
 echo
 echo "  Point the phones to PROV_URL via DHCP option 160 / 66, or set it manually on the phone"

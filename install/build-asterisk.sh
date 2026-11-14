@@ -30,20 +30,23 @@ mkdir -p "$SRC_DIR"
 cd "$SRC_DIR"
 log "Downloading ${TARBALL}"
 wget -q -O "$TARBALL" "${URL_BASE}/${TARBALL}"
-if wget -q -O "${TARBALL}.sha256" "${URL_BASE}/${TARBALL}.sha256"; then
-  expected=$(awk '{print $1}' "${TARBALL}.sha256")
+SUMFILE="asterisk-${ASTERISK_MAJOR}-current.sha256"
+if wget -q -O "$SUMFILE" "${URL_BASE}/${SUMFILE}" && [[ -s "$SUMFILE" ]]; then
+  expected=$(awk 'NR==1 {print $1}' "$SUMFILE")
   actual=$(sha256sum "$TARBALL" | awk '{print $1}')
   [[ "$expected" == "$actual" ]] || { echo "SHA256 mismatch for $TARBALL"; exit 1; }
-  log "SHA256 verified"
+  log "SHA256 verified ($(awk 'NR==1 {print $2}' "$SUMFILE"))"
 else
-  log "WARNING: no .sha256 published, checksum not verified"
+  log "WARNING: no checksum published, not verified"
 fi
 
-DIR=$(tar -tzf "$TARBALL" | head -1 | cut -d/ -f1)
+# Extract into a fixed directory (no "tar | head" pipe: with pipefail it kills the script)
+DIR="asterisk-${ASTERISK_MAJOR}-src"
 rm -rf "$DIR"
-tar -xzf "$TARBALL"
+mkdir "$DIR"
+tar -xzf "$TARBALL" -C "$DIR" --strip-components=1
 cd "$DIR"
-log "Building $DIR"
+log "Building $(cat .version 2>/dev/null || echo "Asterisk ${ASTERISK_MAJOR}")"
 
 ./configure --with-pjproject-bundled --with-jansson-bundled=no --libdir=/usr/lib >/dev/null
 make menuselect.makeopts >/dev/null
