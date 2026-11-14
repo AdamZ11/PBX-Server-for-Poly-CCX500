@@ -47,8 +47,14 @@ def call(ip: str, password: str, method: str, path: str, body: dict | None = Non
                 except json.JSONDecodeError:
                     return {"raw": raw}
         except urllib.error.HTTPError as exc:
-            if exc.code in (401, 403):
-                raise PolyRestError("A telefon elutasította a hitelesítést (admin jelszó / REST API engedélyezve?)")
+            if exc.code == 401:
+                raise PolyRestError(
+                    "HTTP 401: a telefon nem fogadta el az admin jelszót, vagy a 'Polycom' fiók zárolva van. "
+                    "Ne próbálkozz újra, mert minden sikertelen hívás a zárolás felé visz. Gyári visszaállítás "
+                    "után a jelszó 456, amíg a telefon le nem tölti a szerver konfigját.")
+            if exc.code == 403:
+                raise PolyRestError("HTTP 403: a REST API ki van kapcsolva a telefonon "
+                                    "(apps.restapi.enabled), vagy a fiók zárolva van.")
             last_error = f"HTTP {exc.code}"
         except (urllib.error.URLError, OSError) as exc:
             last_error = str(getattr(exc, "reason", exc))
