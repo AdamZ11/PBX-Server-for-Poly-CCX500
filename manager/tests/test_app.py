@@ -106,6 +106,23 @@ def test_full_flow(client):
     assert "password=********" in client.get("/asterisk/preview").text
 
 
+def test_rest_pages_render(client, monkeypatch):
+    from ccxpbx import polyrest
+    from .test_restview import INFO
+    login(client)
+    monkeypatch.setattr(polyrest, "run", lambda ip, pw, name: INFO if name == "info" else {"Status": "2000", "data": {}})
+    page = client.get("/phones/0004f2aabbcc/rest/info")
+    assert page.status_code == 200
+    assert "Eszközinfó" in page.text and "CCX 500" in page.text and "0 nap 0:09:10" in page.text
+    assert client.get("/phones/0004f2aabbcc/rest/calls").status_code == 200
+
+    def fail(ip, pw, name):
+        raise polyrest.PolyRestError("HTTP 401: teszt")
+    monkeypatch.setattr(polyrest, "run", fail)
+    page = client.get("/phones/0004f2aabbcc/rest/network")
+    assert page.status_code == 200 and "HTTP 401: teszt" in page.text
+
+
 def test_live_api(client):
     login(client)
     r = client.get("/api/live")

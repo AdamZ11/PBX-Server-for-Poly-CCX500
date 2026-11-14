@@ -11,7 +11,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import ami, asterisk_gen, config, db, httpauth, plan, poly, polyrest, services
+from . import ami, asterisk_gen, config, db, httpauth, plan, poly, polyrest, restview, services
 from .services import get_db
 
 router = APIRouter()
@@ -521,14 +521,19 @@ async def phone_action(mac: str, action: str, request: Request, conn=Depends(get
 async def phone_rest(mac: str, name: str, request: Request, conn=Depends(get_db), _=Depends(require_login)):
     if name not in ("info", "network", "lines", "calls"):
         return redirect(f"/phones/{mac}")
+    phone = db.load_phone(conn, mac)
+    if not phone:
+        return redirect("/phones")
     ip = await run_in_threadpool(services.phone_ip, conn, mac)
+    view, raw, error = None, "", None
     try:
         data = await run_in_threadpool(polyrest.run, ip, db.get_settings(conn)["phone_admin_password"], name)
-        text, error = json.dumps(data, indent=2, ensure_ascii=False), None
+        view = restview.build(name, data)
+        raw = json.dumps(data, indent=2, ensure_ascii=False)
     except polyrest.PolyRestError as exc:
-        text, error = "", str(exc)
-    return render(request, conn, "text_view.html", title=f"{mac} - REST {name} ({ip})", text=text,
-                  error=error, back=f"/phones/{mac}")
+        error = str(exc)
+    return render(request, conn, "rest_view.html", phone=phone, ip=ip, view_name=name, view=view, raw=raw,
+                  error=error, tabs=restview.TITLES)
 
 
 @router.get("/phones/{mac}/config", response_class=HTMLResponse)

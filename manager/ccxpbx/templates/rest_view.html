@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row between">
+  <div>
+    <h1>{{ phone.label or 'Telefon' }} <span class="muted">· {{ phone.mac }}</span></h1>
+    <p class="muted small">Közvetlenül a telefontól lekérdezve (Poly REST API) · {{ ip or 'ismeretlen IP' }}</p>
+  </div>
+  <a class="btn secondary" href="/phones/{{ phone.mac }}">Vissza a telefonhoz</a>
+</div>
+
+<nav class="tabs">
+  {% for key, title in tabs.items() %}
+  <a href="/phones/{{ phone.mac }}/rest/{{ key }}" class="{{ 'active' if key == view_name }}">{{ title }}</a>
+  {% endfor %}
+</nav>
+
+{% if error %}<div class="flash err">{{ error }}</div>{% endif %}
+
+{% if view %}
+  {% if not view.status_ok %}<div class="flash warn">A telefon válaszkódja: {{ view.status }}</div>{% endif %}
+  {% for s in view.sections %}
+  <section class="card">
+    <h2>{{ s.title }}</h2>
+    {% if s.kind == 'kv' %}
+    <div class="facts">
+      {% for r in s.rows %}
+      <div class="fact"><span>{{ r.label }}</span><b class="{{ 'pill ' ~ r.tone if r.tone }}">{{ r.value }}</b></div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="scroll-x"><table>
+      <tr>{% for c in s.cols %}<th>{{ c }}</th>{% endfor %}</tr>
+      {% for row in s.rows %}
+      <tr>{% for cell in row %}<td>{% if cell.tone %}<span class="pill {{ cell.tone }}">{{ cell.value }}</span>{% else %}{{ cell.value }}{% endif %}</td>{% endfor %}</tr>
+      {% endfor %}
+    </table></div>
+    {% endif %}
+  </section>
+  {% else %}
+  <section class="card"><p class="muted">A telefon nem küldött adatot ehhez a nézethez{{ ' (nincs aktív hívás)' if view_name == 'calls' }}.</p></section>
+  {% endfor %}
+
+  <details class="card raw">
+    <summary>Nyers válasz (JSON)</summary>
+    <pre class="code">{{ raw }}</pre>
+  </details>
+{% endif %}
+{% endblock %}
