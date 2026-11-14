@@ -1,70 +1,74 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Áttekintés</h1>
-{% if ami_error %}<div class="flash err">Asterisk: {{ ami_error }}</div>{% endif %}
+<div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Asterisk: <span>{{ ami_error or '' }}</span></div>
 {% if ip_mismatch %}<div class="flash err">A beállított szerver IP ({{ settings.server_host }}) nem ennek a gépnek a címe
   (a gép címe: {{ ip_mismatch|join(', ') }}). A telefonok így nem érik el a szervert: javítsd a
   <a href="/settings">Beállításokban</a>, és adj a gépnek fix IP-t (DHCP-foglalás a routeren).</div>{% endif %}
 {% if not settings.server_host %}<div class="flash warn">Állítsd be a szerver IP címét a <a href="/settings">Beállításokban</a>!</div>{% endif %}
 
 <div class="tiles">
-  <div class="tile"><b>{{ counts.extensions }}</b><span>mellék</span></div>
-  <div class="tile"><b>{{ counts.phones }}</b><span>telefon</span></div>
-  <div class="tile"><b>{{ live.contacts|length }}</b><span>regisztrált</span></div>
-  <div class="tile"><b>{{ live.channels|length }}</b><span>aktív csatorna</span></div>
+  <div class="tile"><b id="t-extensions">{{ live.counts.extensions }}</b><span>mellék</span></div>
+  <div class="tile"><b id="t-phones">{{ live.counts.phones }}</b><span>telefon</span></div>
+  <div class="tile"><b id="t-registered">{{ live.counts.registered }}</b><span>regisztrált</span></div>
+  <div class="tile"><b id="t-channels">{{ live.counts.channels }}</b><span>aktív csatorna</span></div>
 </div>
 
-{% if unknown %}
-<section class="card">
+<section class="card" id="unknown-section" {% if not live.unknown %}hidden{% endif %}>
   <h2>Új, még fel nem vett telefonok</h2>
   <p class="muted">Ezek a készülékek már letöltötték a provisioning konfigurációt, de nincs hozzájuk mellék rendelve.</p>
   <table>
-    <tr><th>MAC</th><th>IP</th><th>Modell</th><th>Firmware</th><th>Utoljára</th><th></th></tr>
-    {% for d in unknown %}
+    <thead><tr><th>MAC</th><th>IP</th><th>Modell</th><th>Firmware</th><th>Utoljára</th><th></th></tr></thead>
+    <tbody id="unknown-body">
+    {% for d in live.unknown %}
     <tr><td class="mono">{{ d.mac }}</td><td>{{ d.ip }}</td><td>{{ d.model }}</td><td>{{ d.firmware }}</td>
-        <td>{{ d.last_seen|localtime(settings.timezone_name) }}</td><td><a class="btn" href="/phones/new?mac={{ d.mac }}">Felvétel</a></td></tr>
+        <td>{{ d.last_seen }}</td><td><a class="btn" href="/phones/new?mac={{ d.mac }}">Felvétel</a></td></tr>
     {% endfor %}
+    </tbody>
   </table>
 </section>
-{% endif %}
 
 <section class="card">
   <h2>Regisztrációk</h2>
   <table>
-    <tr><th>Mellék</th><th>Telefon</th><th>Állapot</th><th>Kontakt</th><th>User-Agent</th><th>RTT</th></tr>
+    <thead><tr><th>Mellék</th><th>Telefon</th><th>Állapot</th><th>Kontakt</th><th>User-Agent</th><th>RTT</th></tr></thead>
+    <tbody id="reg-body">
     {% for c in live.contacts %}
     <tr>
-      <td>{{ c.Endpoint }}</td>
-      <td>{% if phones.get(c.Endpoint) %}<a href="/phones/{{ phones[c.Endpoint] }}" class="mono">{{ phones[c.Endpoint] }}</a>{% endif %}</td>
-      <td><span class="pill {{ 'ok' if c.Status in ('Reachable','NonQualified','Created') else 'err' }}">{{ c.Status }}</span></td>
-      <td class="mono small">{{ c.Uri }}</td>
-      <td class="small">{{ c.UserAgent }}</td>
-      <td>{% if c.RoundtripUsec and c.RoundtripUsec != '0' %}{{ (c.RoundtripUsec|int / 1000)|round(1) }} ms{% endif %}</td>
+      <td>{{ c.endpoint }}</td>
+      <td>{% if c.mac %}<a href="/phones/{{ c.mac }}" class="mono">{{ c.mac }}</a>{% endif %}</td>
+      <td><span class="pill {{ 'ok' if c.status in ('Reachable','NonQualified','Created') else 'err' }}">{{ c.status }}</span></td>
+      <td class="mono small">{{ c.uri }}</td>
+      <td class="small">{{ c.ua }}</td>
+      <td>{% if c.rtt %}{{ c.rtt }} ms{% endif %}</td>
     </tr>
     {% else %}<tr><td colspan="6" class="muted">Nincs regisztrált készülék.</td></tr>{% endfor %}
+    </tbody>
   </table>
 </section>
 
 <section class="card">
   <h2>Aktív csatornák</h2>
   <table>
-    <tr><th>Csatorna</th><th>Hívó</th><th>Cél</th><th>Állapot</th><th>Időtartam</th></tr>
+    <thead><tr><th>Csatorna</th><th>Hívó</th><th>Cél</th><th>Állapot</th><th>Időtartam</th></tr></thead>
+    <tbody id="ch-body">
     {% for ch in live.channels %}
-    <tr><td class="mono small">{{ ch.Channel }}</td><td>{{ ch.CallerIDName }} &lt;{{ ch.CallerIDNum }}&gt;</td>
-        <td>{{ ch.Exten }}</td><td>{{ ch.ChannelStateDesc }}</td><td>{{ ch.Duration }}</td></tr>
+    <tr><td class="mono small">{{ ch.channel }}</td><td>{{ ch.cid_name }} &lt;{{ ch.cid_num }}&gt;</td>
+        <td>{{ ch.exten }}</td><td>{{ ch.state }}</td><td>{{ ch.duration }}</td></tr>
     {% else %}<tr><td colspan="5" class="muted">Nincs aktív hívás.</td></tr>{% endfor %}
+    </tbody>
   </table>
 </section>
 
-{% if live.regs %}
-<section class="card">
+<section class="card" id="regs-section" {% if not live.regs %}hidden{% endif %}>
   <h2>Trönk regisztrációk</h2>
   <table>
-    <tr><th>Név</th><th>Szerver</th><th>Állapot</th></tr>
-    {% for r in live.regs %}<tr><td>{{ r.ObjectName }}</td><td>{{ r.ServerUri }}</td><td>{{ r.Status }}</td></tr>{% endfor %}
+    <thead><tr><th>Név</th><th>Szerver</th><th>Állapot</th></tr></thead>
+    <tbody id="regs-body">
+    {% for r in live.regs %}<tr><td>{{ r.name }}</td><td>{{ r.server }}</td><td>{{ r.status }}</td></tr>{% endfor %}
+    </tbody>
   </table>
 </section>
-{% endif %}
 
 <section class="card">
   <h2>Rendszer</h2>

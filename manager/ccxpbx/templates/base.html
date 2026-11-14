@@ -6,7 +6,7 @@
 <title>{% block title %}CCX PBX{% endblock %}</title>
 <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body{% if live_page %} data-live="{{ live_page }}"{% endif %}>
 {% if user %}
 <header>
   <a class="brand" href="/">CCX&nbsp;PBX</a>
@@ -18,6 +18,7 @@
     <a href="/trunks">Trönkök</a>
     <a href="/settings">Beállítások</a>
   </nav>
+  {% if live_page %}<span id="live-indicator" class="live" title="Az oldal 3 másodpercenként frissül">● élő</span>{% endif %}
   <form method="post" action="/logout"><button class="link">Kilépés</button></form>
 </header>
 {% if dirty %}
@@ -40,5 +41,6 @@
 {% for kind, msg in flashes %}<div class="flash {{ kind }}">{{ msg }}</div>{% endfor %}
 {% block content %}{% endblock %}
 </main>
+{% if live_page %}<script src="/static/live.js" defer></script>{% endif %}
 </body>
 </html>

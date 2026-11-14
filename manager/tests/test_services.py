@@ -21,6 +21,7 @@ class FakeAMI:
 
 @pytest.mark.parametrize("text,expected", [
     ("FileTransport PolycomCCX-CCX_500-UA/8.1.3.1301", ("CCX500", "8.1.3.1301")),
+    ("PolyCCX-CCX_500-UA/9.5.1.0130", ("CCX500", "9.5.1.0130")),  # real CCX500, PolyOS 9.5.1
     ("64167fe2156a-encl.64167fe2156a-9.5.1.0067-CCX500-core.tapp0.11.1791827128.gz.tar.gz",
      ("CCX500", "9.5.1.0067")),
     ("Poly/CCX500 9.5.1.0130 (64167fe2156a)", ("CCX500", "9.5.1.0130")),

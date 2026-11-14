@@ -5,15 +5,15 @@
 {% if not is_new %}
 <section class="card">
   <h2>Állapot és kezelés</h2>
-  {% if ami_error %}<div class="flash err">Asterisk: {{ ami_error }}</div>{% endif %}
-  <dl class="kv">
+  <div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Asterisk: <span>{{ ami_error or '' }}</span></div>
+  <dl class="kv" id="phone-live" data-mac="{{ phone.mac }}" data-has-lines="{{ '1' if phone.lines else '0' }}">
     <dt>SIP regisztráció</dt>
-    <dd>{% if contact %}<span class="pill ok">{{ contact.Status }}</span> <span class="mono small">{{ contact.Uri }}</span>
+    <dd class="js-sip">{% if contact %}<span class="pill ok">{{ contact.Status }}</span> <span class="mono small">{{ contact.Uri }}</span>
         {% elif phone.lines %}<span class="pill err">nincs regisztrálva</span>{% else %}<span class="pill">nincs vonal rendelve</span>{% endif %}</dd>
-    <dt>IP cím</dt><dd>{{ ip or '-' }} {% if ip %}<a href="https://{{ ip }}" target="_blank" rel="noopener">telefon webfelülete ↗</a>{% endif %}</dd>
-    <dt>Modell / firmware</dt><dd>{{ seen.model if seen }} {{ seen.firmware if seen }}</dd>
-    <dt>User-Agent</dt><dd class="small">{{ seen.user_agent if seen }}</dd>
-    <dt>Utolsó provisioning</dt><dd>{{ seen.last_seen|localtime(settings.timezone_name) if seen }} ({{ seen.last_file if seen }})</dd>
+    <dt>IP cím</dt><dd class="js-ip">{{ ip or '-' }} {% if ip %}<a href="https://{{ ip }}" target="_blank" rel="noopener">telefon webfelülete ↗</a>{% endif %}</dd>
+    <dt>Modell / firmware</dt><dd class="js-model">{{ seen.model if seen }} {{ seen.firmware if seen }}</dd>
+    <dt>User-Agent</dt><dd class="small js-ua">{{ (contact.UserAgent if contact else '') or (seen.user_agent if seen else '') }}</dd>
+    <dt>Utolsó provisioning</dt><dd class="js-seen">{{ seen.last_seen|localtime(settings.timezone_name) if seen }} ({{ seen.last_file if seen }})</dd>
   </dl>
   <div class="row wrap">
     <form method="post" action="/phones/{{ phone.mac }}/action/resync"><button>Konfig szinkronizálás</button></form>

@@ -106,6 +106,24 @@ def test_full_flow(client):
     assert "password=********" in client.get("/asterisk/preview").text
 
 
+def test_live_api(client):
+    login(client)
+    r = client.get("/api/live")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+    d = r.json()
+    assert set(d) >= {"contacts", "channels", "regs", "unknown", "phones", "counts", "ami_error", "time"}
+    assert d["ami_error"]  # no Asterisk in the test environment
+    assert d["phones"]["0004f2aabbcc"]["ext"] == "2001"
+    assert d["phones"]["0004f2aabbcc"]["registered"] is False
+    page = client.get("/").text
+    assert 'data-live="dashboard"' in page and "/static/live.js" in page
+    assert 'data-live="phones"' in client.get("/phones").text
+    assert 'data-live="phone"' in client.get("/phones/0004f2aabbcc").text
+    client.post("/logout")
+    r = client.get("/api/live", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/login"
+
+
 def test_settings_validation(client):
     login(client)
     form = dict(db.get_settings(db.connect()))

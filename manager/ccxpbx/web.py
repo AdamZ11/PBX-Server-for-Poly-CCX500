@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from . import ami, asterisk_gen, config, db, httpauth, plan, poly, polyrest, services
@@ -153,23 +153,92 @@ def logout(request: Request):
 
 
 # ---------------------------------------------------------------- dashboard
-@router.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, conn=Depends(get_db), _=Depends(require_login)):
+def _rtt_ms(value) -> float | None:
+    try:
+        usec = int(value)
+    except (TypeError, ValueError):
+        return None
+    return round(usec / 1000, 1) if usec > 0 else None
+
+
+def live_data(conn) -> dict:
+    """Everything the live-updating pages show, as plain JSON-able data."""
     def collect(a):
         return {"contacts": a.contacts(), "channels": a.channels(), "regs": a.registrations()}
 
-    live, err = await run_in_threadpool(ami.safe_call, collect, {"contacts": [], "channels": [], "regs": []})
-    phones = {r["ext"]: r["mac"] for r in conn.execute("SELECT ext, mac FROM phone_lines")}
-    unknown = conn.execute(
-        "SELECT * FROM seen_devices WHERE mac NOT IN (SELECT mac FROM phones) ORDER BY last_seen DESC"
-    ).fetchall()
+    live, err = ami.safe_call(collect, {"contacts": [], "channels": [], "regs": []})
+    tz = db.get_settings(conn).get("timezone_name", "")
+    ext_to_mac = {r["ext"]: r["mac"] for r in conn.execute("SELECT ext, mac FROM phone_lines")}
+    contacts = [{
+        "endpoint": c.get("Endpoint", ""),
+        "mac": ext_to_mac.get(c.get("Endpoint", ""), ""),
+        "status": c.get("Status", ""),
+        "uri": c.get("Uri", ""),
+        "ua": c.get("UserAgent", ""),
+        "rtt": _rtt_ms(c.get("RoundtripUsec")),
+    } for c in live["contacts"] or []]
+    by_endpoint = {c["endpoint"]: c for c in contacts}
+    channels = [{
+        "channel": ch.get("Channel", ""),
+        "cid_name": ch.get("CallerIDName", ""),
+        "cid_num": ch.get("CallerIDNum", ""),
+        "exten": ch.get("Exten", ""),
+        "state": ch.get("ChannelStateDesc", ""),
+        "duration": ch.get("Duration", ""),
+    } for ch in live["channels"] or []]
+    regs = [{"name": r.get("ObjectName", ""), "server": r.get("ServerUri", ""), "status": r.get("Status", "")}
+            for r in live["regs"] or []]
+
+    def seen_row(row) -> dict:
+        d = dict(row)
+        d["last_seen"] = localtime(d.get("last_seen"), tz)
+        d["first_seen"] = localtime(d.get("first_seen"), tz)
+        return d
+
+    unknown = [seen_row(r) for r in conn.execute(
+        "SELECT * FROM seen_devices WHERE mac NOT IN (SELECT mac FROM phones) ORDER BY last_seen DESC")]
+    seen = {r["mac"]: seen_row(r) for r in conn.execute("SELECT * FROM seen_devices")}
+    phones = {}
+    for row in conn.execute("SELECT mac FROM phones"):
+        mac = row["mac"]
+        ext = services.primary_endpoint(conn, mac)
+        contact = by_endpoint.get(ext) if ext else None
+        s = seen.get(mac, {})
+        phones[mac] = {
+            "ext": ext or "",
+            "registered": bool(contact),
+            "contact_status": contact["status"] if contact else "",
+            "contact_uri": contact["uri"] if contact else "",
+            "ip": services.phone_ip(conn, mac, live["contacts"] or []),
+            "model": s.get("model", ""),
+            "firmware": s.get("firmware", ""),
+            "user_agent": (contact["ua"] if contact else "") or s.get("user_agent", ""),
+            "last_seen": s.get("last_seen", ""),
+            "last_file": s.get("last_file", ""),
+        }
     counts = {
         "extensions": conn.execute("SELECT COUNT(*) FROM extensions").fetchone()[0],
-        "phones": conn.execute("SELECT COUNT(*) FROM phones").fetchone()[0],
+        "phones": len(phones),
+        "registered": len(contacts),
+        "channels": len(channels),
     }
+    return {"contacts": contacts, "channels": channels, "regs": regs, "unknown": unknown, "phones": phones,
+            "counts": counts, "ami_error": err, "time": localtime(datetime.now(timezone.utc)
+                                                                 .strftime("%Y-%m-%d %H:%M:%S"), tz)[11:]}
+
+
+@router.get("/", response_class=HTMLResponse)
+async def dashboard(request: Request, conn=Depends(get_db), _=Depends(require_login)):
+    data = await run_in_threadpool(live_data, conn)
     mismatch = services.server_host_mismatch(db.get_settings(conn)["server_host"])
-    return render(request, conn, "dashboard.html", live=live, ami_error=err, phones=phones,
-                  unknown=unknown, counts=counts, ip_mismatch=mismatch)
+    return render(request, conn, "dashboard.html", live=data, ami_error=data["ami_error"],
+                  ip_mismatch=mismatch, live_page="dashboard")
+
+
+@router.get("/api/live")
+async def api_live(conn=Depends(get_db), _=Depends(require_login)):
+    data = await run_in_threadpool(live_data, conn)
+    return JSONResponse(data, headers={"Cache-Control": "no-store"})
 
 
 # ---------------------------------------------------------------- extensions
@@ -263,7 +332,7 @@ async def phone_list(request: Request, conn=Depends(get_db), _=Depends(require_l
         p["seen"] = dict(seen) if seen else None
         p["registered"] = bool(p["lines"]) and p["lines"][0]["ext"] in registered
         phones.append(p)
-    return render(request, conn, "phones.html", phones=phones, ami_error=err)
+    return render(request, conn, "phones.html", phones=phones, ami_error=err, live_page="phones")
 
 
 def _phone_form_ctx(conn, phone: dict) -> dict:
@@ -288,7 +357,7 @@ async def phone_edit(mac: str, request: Request, conn=Depends(get_db), _=Depends
     ext = phone["lines"][0]["ext"] if phone["lines"] else None
     contact = next((c for c in contacts or [] if c.get("Endpoint") == ext), None)
     seen = conn.execute("SELECT * FROM seen_devices WHERE mac=?", (mac,)).fetchone()
-    return render(request, conn, "phone_form.html", is_new=False, contact=contact, ami_error=err,
+    return render(request, conn, "phone_form.html", is_new=False, contact=contact, ami_error=err, live_page="phone",
                   seen=seen, ip=services.phone_ip(conn, mac, contacts or []),
                   files=services.uploaded_files(mac), **_phone_form_ctx(conn, phone))
 
