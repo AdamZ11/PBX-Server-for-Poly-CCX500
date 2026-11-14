@@ -11,6 +11,7 @@ trap 'echo -e "\033[1;31m[ccxpbx] FAILED at line $LINENO: $BASH_COMMAND\033[0m" 
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOST=""
+HOST_GIVEN=0
 SKIP_ASTERISK=0
 FIREWALL=0
 FAIL2BAN=0
@@ -18,7 +19,7 @@ HTTP_PORT=80
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --host) HOST="$2"; shift 2 ;;
+    --host) HOST="$2"; HOST_GIVEN=1; shift 2 ;;
     --skip-asterisk) SKIP_ASTERISK=1; shift ;;
     --firewall) FIREWALL=1; shift ;;
     --fail2ban) FAIL2BAN=1; shift ;;
@@ -39,7 +40,7 @@ log "Server address: ${HOST:-unknown} (change later in the web UI -> Beállítá
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq python3 python3-venv python3-pip openssl ca-certificates sqlite3 chrony
+apt-get install -y -qq python3 python3-venv python3-pip openssl ca-certificates sqlite3 chrony git
 
 # ------------------------------------------------------------------ Asterisk
 if [[ $SKIP_ASTERISK -eq 0 ]]; then
@@ -143,7 +144,12 @@ run_cli() {
 }
 FIRST_RUN=0
 [[ -f /var/lib/ccxpbx/ccxpbx.db ]] || FIRST_RUN=1
-SECRETS=$(run_cli init --host "$HOST")
+# On a re-run (e.g. an update from the web UI) keep the stored server address unless --host was given
+if [[ $FIRST_RUN -eq 1 || $HOST_GIVEN -eq 1 ]]; then
+  SECRETS=$(run_cli init --host "$HOST")
+else
+  SECRETS=$(run_cli init)
+fi
 run_cli apply >/dev/null 2>&1 || true   # writes /etc/asterisk/ccxpbx/*.conf (Asterisk may not run yet)
 
 install -m 0644 "$REPO_DIR/install/systemd/asterisk.service" /etc/systemd/system/asterisk.service
@@ -154,6 +160,21 @@ systemctl daemon-reload
 systemctl enable --now asterisk >/dev/null
 systemctl enable ccxpbx >/dev/null
 systemctl restart ccxpbx
+
+# ------------------------------------------------------------------ updates from the web UI
+# A root helper does git pull + this installer when the UI asks for it (request file, path unit),
+# and checks GitHub every 6 hours. The web app itself never gets root.
+install -m 0755 "$REPO_DIR/install/ccxpbx-update.sh" /usr/local/sbin/ccxpbx-update
+cat > /etc/ccxpbx/update.env <<EOF
+CCXPBX_REPO_DIR="$REPO_DIR"
+EOF
+install -d -o ccxpbx -g ccxpbx -m 0755 /var/lib/ccxpbx/update
+for unit in ccxpbx-update.service ccxpbx-update.path ccxpbx-update-check.service ccxpbx-update-check.timer; do
+  install -m 0644 "$REPO_DIR/install/systemd/$unit" "/etc/systemd/system/$unit"
+done
+systemctl daemon-reload
+systemctl enable --now ccxpbx-update.path ccxpbx-update-check.timer >/dev/null
+systemctl start --no-block ccxpbx-update-check.service || true
 
 # ------------------------------------------------------------------ optional hardening
 if [[ $FIREWALL -eq 1 ]]; then

@@ -11,7 +11,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import ami, asterisk_gen, config, db, httpauth, plan, poly, polyrest, restview, services, wallpapers
+from . import ami, asterisk_gen, config, db, httpauth, plan, poly, polyrest, restview, services, updates, wallpapers
 from .services import get_db
 
 router = APIRouter()
@@ -24,7 +24,9 @@ def localtime(value: str | None, tz_name: str = "") -> str:
     if not value:
         return ""
     try:
-        dt = datetime.fromisoformat(str(value)).replace(tzinfo=timezone.utc)
+        dt = datetime.fromisoformat(str(value))
+        if dt.tzinfo is None:   # SQLite values carry no offset
+            dt = dt.replace(tzinfo=timezone.utc)
     except ValueError:
         return str(value)
     try:
@@ -64,6 +66,7 @@ def render(request: Request, conn, name: str, **ctx) -> HTMLResponse:
         user=request.session.get("user"),
     )
     ctx.setdefault("server", services.server_status())
+    ctx.setdefault("update", updates.status())
     return templates.TemplateResponse(request, name, ctx)
 
 
@@ -852,6 +855,34 @@ SETTING_HELP = {
 SETTING_BOOLS = ("lock_prov_server", "prov_polling", "clock_24h", "paging_enabled", "intercom_unmute",
                  "rest_api", "web_ui", "softkey_park", "softkey_record", "led_incoming", "led_voicemail",
                  "microbrowser", "phone_ui_brand")
+
+
+@router.get("/updates", response_class=HTMLResponse)
+def updates_page(request: Request, conn=Depends(get_db), _=Depends(require_login)):
+    return render(request, conn, "updates.html", log=updates.log_tail())
+
+
+@router.get("/api/update")
+def updates_api(_=Depends(require_login)):
+    data = updates.status()
+    data["log"] = updates.log_tail(40) if data.get("state") in ("running", "done", "failed") else ""
+    return JSONResponse(data, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/updates/{action}")
+def updates_action(action: str, request: Request, _=Depends(require_login)):
+    if action not in ("check", "apply"):
+        return redirect("/updates")
+    st = updates.status()
+    if not st["installed"]:
+        flash(request, "A frissítésfigyelő még nincs telepítve: futtasd le egyszer a telepítőt a szerveren.", "warn")
+    elif st.get("state") == "running":
+        flash(request, "Már fut egy frissítés.", "warn")
+    else:
+        updates.request(action)
+        flash(request, "Frissítés elindítva. A kezelőfelület közben néhány másodpercre újraindul."
+              if action == "apply" else "Ellenőrzés elindítva.")
+    return redirect("/updates")
 
 
 @router.get("/office-hours", response_class=HTMLResponse)

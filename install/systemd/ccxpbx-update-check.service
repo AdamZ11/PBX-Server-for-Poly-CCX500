@@ -1,0 +1,8 @@
+[Unit]
+Description=ccxpbx - periodic update check (git fetch)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ccxpbx-update check

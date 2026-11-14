@@ -1,0 +1,9 @@
+[Unit]
+Description=ccxpbx - update check / update requested from the web UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ccxpbx-update request
+TimeoutStartSec=90min

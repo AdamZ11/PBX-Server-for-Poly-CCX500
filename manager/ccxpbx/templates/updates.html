@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Frissítések · CCXPBX{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Frissítések</h1>
+    <p class="muted">A szerver 6 óránként megnézi a GitHubot, és szól, ha új verzió van. A frissítés egy gomb: letölti az újdonságokat és lefuttatja a telepítőt.</p>
+  </div>
+</div>
+
+{% if not update.installed %}
+<section class="card warn">
+  <h2>A frissítésfigyelő még nincs telepítve</h2>
+  <p>Ez egy egyszeri lépés. Futtasd le a szerveren a repó mappájában, utána minden frissítés innen megy, parancssor nélkül:</p>
+  <pre class="mono">git pull &amp;&amp; sudo ./install/install.sh</pre>
+</section>
+{% else %}
+<section class="card" id="upd" data-state="{{ update.state }}">
+  <div class="update-head">
+    <div>
+      <div class="muted small">Telepített verzió</div>
+      <div class="update-ver"><span class="mono">{{ update.current.hash or '–' }}</span>
+        <span class="muted">{{ update.current.date|localtime(settings.timezone_name) if update.current.date }}</span></div>
+      <div class="small">{{ update.current.subject }}</div>
+    </div>
+    <div class="update-state" id="upd-state">
+      {% if update.state == 'running' %}<span class="status"><span class="dot ring"></span>Frissítés folyamatban…</span>
+      {% elif update.pending %}<span class="status"><span class="dot ring"></span>{{ 'Frissítés indul…' if update.pending == 'apply' else 'Ellenőrzés…' }}</span>
+      {% elif update.state == 'failed' %}<span class="status"><span class="dot busy"></span>{{ update.message }}</span>
+      {% elif update.available %}<span class="status"><span class="dot ring"></span>{{ update.behind }} új változás érhető el</span>
+      {% else %}<span class="status"><span class="dot free"></span>Naprakész</span>{% endif %}
+      <div class="muted small">Utolsó ellenőrzés: {{ update.checked_at|localtime(settings.timezone_name) if update.checked_at }} · ág: <span class="mono">{{ update.branch }}</span></div>
+    </div>
+  </div>
+
+  {% if update.dirty %}
+  <div class="flash warn">A szerveren lévő repóban helyi módosítások vannak, ezért a frissítés nem tud lefutni. A repó mappájában a <code>git status</code> mutatja őket.</div>
+  {% endif %}
+
+  {% if update.available %}
+  <h2>Újdonságok</h2>
+  <ul class="commit-list">
+    {% for c in update.commits %}<li><span class="mono muted">{{ c.hash }}</span> {{ c.subject }} <span class="muted small">{{ c.date|localtime(settings.timezone_name) }}</span></li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  <div class="row wrap">
+    {% if update.available %}
+    <form method="post" action="/updates/apply" onsubmit="return confirm('Frissíted a CCXPBX-et? A kezelőfelület közben pár másodpercre újraindul, a hívások nem szakadnak meg.')">
+      <button {{ 'disabled' if update.state == 'running' or update.pending or update.dirty }}>Frissítés most</button></form>
+    {% endif %}
+    <form method="post" action="/updates/check"><button class="secondary" {{ 'disabled' if update.state == 'running' or update.pending }}>Ellenőrzés most</button></form>
+  </div>
+
+  <details class="update-log" id="upd-log-box" {{ 'open' if update.state in ('running', 'failed') }} {{ 'hidden' if not log }}>
+    <summary>Frissítési napló</summary>
+    <pre class="mono small" id="upd-log">{{ log }}</pre>
+  </details>
+</section>
+{% endif %}
+
+<script>
+/* While a check or an update runs, poll the status; the web UI itself restarts during an update. */
+(function () {
+  const busy = {{ 'true' if update.installed and (update.state == 'running' or update.pending) else 'false' }};
+  if (!busy) return;
+  const state = document.getElementById("upd-state");
+  const logBox = document.getElementById("upd-log-box");
+  const log = document.getElementById("upd-log");
+  let wasRunning = false, failures = 0;
+  async function poll() {
+    try {
+      const r = await fetch("/api/update", { cache: "no-store" });
+      if (r.redirected || !r.ok) throw new Error(r.status);
+      const d = await r.json();
+      failures = 0;
+      if (d.log) { logBox.hidden = false; logBox.open = true; log.textContent = d.log; log.scrollTop = log.scrollHeight; }
+      if (d.state === "running" || d.pending) { wasRunning = wasRunning || d.state === "running"; return setTimeout(poll, 2000); }
+      location.reload();
+    } catch (_) {
+      // the service restarts at the end of an update: keep waiting
+      failures++;
+      state.innerHTML = '<span class="status"><span class="dot ring"></span>A kezelőfelület újraindul…</span>';
+      setTimeout(poll, failures > 30 ? 5000 : 2000);
+    }
+  }
+  setTimeout(poll, 1500);
+})();
+</script>
+{% endblock %}

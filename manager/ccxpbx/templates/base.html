@@ -23,6 +23,7 @@
       {% for href, label in nav %}
       <a href="{{ href }}" class="{{ 'active' if (href == '/' and path == '/') or (href != '/' and path.startswith(href)) }}">{{ label }}</a>
       {% endfor %}
+      <a href="/updates" class="{{ 'active' if path.startswith('/updates') }}">Frissítések{% if update.available %} <span class="nav-badge" title="Új verzió érhető el">{{ update.behind }}</span>{% endif %}</a>
     </nav>
     <div class="server-card" id="server-card">
       <div class="name"><span class="dot {{ 'free' if server.asterisk else 'off' }}" id="srv-dot"></span><span id="srv-name">{{ server.name }}</span></div>
@@ -38,6 +39,12 @@
         <label class="check"><input type="checkbox" name="resync" value="1" checked> telefonok szinkronizálása is</label>
         <button class="secondary">Változások alkalmazása</button>
       </form>
+    </div>
+    {% endif %}
+    {% if update.available and not path.startswith('/updates') and update.state != 'running' %}
+    <div class="banner update">
+      <span><b>Új CCXPBX verzió érhető el</b> · {{ update.behind }} új változás a GitHubon.</span>
+      <a class="btn secondary small" href="/updates">Megnézem</a>
     </div>
     {% endif %}
     {% if restart_required %}

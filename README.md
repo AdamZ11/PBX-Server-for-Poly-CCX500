@@ -64,6 +64,19 @@ Az Asterisk fordítása Pi 4-en 30–60 perc. SD kártya helyett SSD ajánlott. 
 Költözéskor elég a `/var/lib/ccxpbx/` könyvtárat (adatbázis, feltöltött firmware) és az `/etc/ccxpbx/ccxpbx.env`
 fájlt átmásolni, majd a telepítőt lefuttatni.
 
+### Frissítés a webes felületről
+
+A telepítő egy frissítésfigyelőt is feltesz: a szerver 6 óránként megnézi a GitHubot, és ha új verzió van, a felület
+tetején sáv jelenik meg, a menüben a *Frissítések* mellett pedig a változások száma. A *Frissítések* oldalon látod az
+újdonságokat, és a *Frissítés most* gomb letölti őket (`git pull`), majd lefuttatja a telepítőt. A kezelőfelület
+közben pár másodpercre újraindul, a hívások nem szakadnak meg.
+
+Ehhez a webes felület nem kap root jogot: csak egy kérést ír a `/var/lib/ccxpbx/update/request` fájlba, amit egy
+systemd path unit (`ccxpbx-update.path`) vesz észre, és a root jogú `/usr/local/sbin/ccxpbx-update` hajt végre.
+A frissítésfigyelő az első olyan telepítéskor kerül fel, amelyik már tartalmazza; addig egyszer kézzel kell:
+`git pull && sudo ./install/install.sh`. Újrafuttatáskor a telepítő megtartja a tárolt szervercímet (`--host`-tal
+felülírható).
+
 ## Telefonok bekötése (zero-touch)
 
 0. **Adj a szervernek fix IP-t** (DHCP-foglalás a routeren). A telefonok ezt a címet kapják meg SIP és provisioning

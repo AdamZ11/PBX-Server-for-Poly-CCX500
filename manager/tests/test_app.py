@@ -245,3 +245,39 @@ def test_office_hours_editor(client):
     # unchecked box turns power saving off
     client.post("/office-hours", data={"office_hours": "monday=8-17", "idle_office": "30", "idle_off": "2", "idle_user_ext": "5"})
     assert 'powerSaving.enable="0"' in prov(client, "/prov/ccx/site.cfg").text
+
+
+def test_update_watcher(client):
+    import json
+
+    from ccxpbx import updates
+    login(client)
+    d = updates.update_dir()
+    for f in ("status.json", "request", "update.log"):
+        (d / f).unlink(missing_ok=True)
+
+    # helper not installed yet: the page explains the one-time install, no request is written
+    page = client.get("/updates")
+    assert page.status_code == 200 and "még nincs telepítve" in page.text
+    client.post("/updates/apply")
+    assert not (d / "request").exists()
+
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "status.json").write_text(json.dumps({
+        "state": "idle", "message": "OK", "checked_at": "2026-11-14T21:00:00+01:00", "repo": "/home/x/repo", "branch": "main",
+        "current": {"hash": "abc1234", "date": "2026-11-10T10:00:00+01:00", "subject": "Old"},
+        "latest": {"hash": "def5678", "date": "2026-11-14T10:00:00+01:00"},
+        "behind": 2, "ahead": 0, "dirty": 0,
+        "commits": [{"hash": "def5678", "date": "2026-11-14T10:00:00+01:00", "subject": "Új funkció"},
+                    {"hash": "bbb2222", "date": "2026-11-13T10:00:00+01:00", "subject": "Javítás"}]}), encoding="utf-8")
+    home = client.get("/").text
+    assert "Új CCXPBX verzió érhető el" in home and 'class="nav-badge"' in home
+    page = client.get("/updates").text
+    assert "Új funkció" in page and "Frissítés most" in page and "abc1234" in page
+
+    r = client.post("/updates/apply", follow_redirects=False)
+    assert r.status_code == 303 and (d / "request").read_text() == "apply"
+    assert client.get("/api/update").json()["pending"] == "apply"
+    client.post("/updates/rm-rf")   # unknown actions are ignored
+    assert (d / "request").read_text() == "apply"
+    (d / "request").unlink()

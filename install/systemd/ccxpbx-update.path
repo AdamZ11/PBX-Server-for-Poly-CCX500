@@ -1,0 +1,9 @@
+[Unit]
+Description=ccxpbx - watch for update requests from the web UI
+
+[Path]
+PathExists=/var/lib/ccxpbx/update/request
+Unit=ccxpbx-update.service
+
+[Install]
+WantedBy=multi-user.target
