@@ -363,7 +363,9 @@
         data.exts.forEach((e) => { if (!ownExts.has(e.ext) && !used.has(e.ext) && keys.length < data.maxKeys) keys.push({ type: "blf", value: e.ext, label: e.name.slice(0, 24) }); });
         touch(); render(); } }),
       el("button", { type: "button", class: "danger small", text: "Gombok ürítése", onclick: () => {
-        if (!keys.length || confirm("Törlöd az összes gombot? Mentés után a telefon maga rendezi a vonalgombokat.")) { keys = []; touch(); render(); } } })));
+        if (!keys.length) return;
+          ccxConfirm("Mentés után a telefon maga rendezi a vonalgombokat.", { title: "Összes gomb törlése", ok: "Törlés", danger: true })
+            .then((yes) => { if (yes) { keys = []; touch(); render(); } }); } })));
   }
 
   async function verify() {
@@ -401,7 +403,7 @@
   }
 
   async function restartPhone() {
-    if (!confirm("Újraindítod a telefon alkalmazását? Kb. fél percig nem lesz használható.")) return;
+    if (!(await ccxConfirm("Kb. fél percig nem lesz használható.", { title: "Telefon alkalmazás újraindítása", ok: "Újraindítás" }))) return;
     await fetch(`/phones/${data.mac}/action/restart`, { method: "POST", body: new URLSearchParams() });
     const out = $("verify-out");
     if (out) out.replaceChildren(el("p", { class: "flash ok", text: "Újraindítás elküldve. Kb. fél perc múlva ellenőrizd újra." }));

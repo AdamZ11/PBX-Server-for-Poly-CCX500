@@ -529,3 +529,19 @@ body.cm-wall-mode .cm-menu button, body.cm-wall-mode .cm-menu a { color: #E6E9EE
 body.cm-wall-mode .cm-menu button:hover:not([disabled]), body.cm-wall-mode .cm-menu a:hover { background: var(--ccx-ink); }
 @media (max-width: 1200px) { body.cm-wall-mode .cm-wrap { grid-template-columns: 1fr; } }
 body.cm-wall-mode .cm-toast { background: var(--ccx-panel-border); }
+
+/* confirmation dialog (static/dialog.js) */
+.ccx-dialog { border: 0; padding: 0; border-radius: var(--ccx-radius-card); width: min(440px, calc(100vw - 32px));
+  box-shadow: 0 24px 60px rgba(14, 17, 22, 0.28); background: var(--ccx-white); color: var(--ccx-ink); }
+.ccx-dialog::backdrop { background: rgba(14, 17, 22, 0.45); }
+.ccx-dialog[open] { animation: ccx-dialog-in 140ms ease-out; }
+.ccx-dialog-body { padding: 22px 24px 20px; }
+.ccx-dialog h2 { margin: 0 0 8px; font-size: 18px; }
+.ccx-dialog-msg { margin: 0 0 20px; color: var(--ccx-slate); line-height: 1.5; }
+.ccx-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.ccx-dialog button.danger { background: var(--ccx-status-busy); border-color: var(--ccx-status-busy); color: #fff; font-weight: 600; }
+.ccx-dialog button.danger:hover { background: #8E1E17; border-color: #8E1E17; }
+@keyframes ccx-dialog-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+@media (prefers-reduced-motion: reduce) { .ccx-dialog[open] { animation: none; } }
+body.cm-wall-mode .ccx-dialog { background: var(--ccx-panel); color: #F3F4F6; }
+body.cm-wall-mode .ccx-dialog-msg { color: #9AA3AE; }

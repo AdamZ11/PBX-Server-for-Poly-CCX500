@@ -10,7 +10,7 @@
     {% for t in rows %}
     <tr><td><b>{{ t.name }}</b></td><td>{{ t.host }}:{{ t.port }}</td><td>{{ t.username }}</td>
         <td>{% if t.register %}{{ status.get(t.name, '?') }}{% else %}IP alapú{% endif %}</td><td>{{ t.callerid }}</td>
-        <td class="right"><form method="post" action="/trunks/{{ t.name }}/delete" onsubmit="return confirm('Törlöd a trönköt és az útvonalait?')">
+        <td class="right"><form method="post" action="/trunks/{{ t.name }}/delete" data-confirm="Törlöd a(z) {{ t.name }} trönköt és az útvonalait?" data-title="Trönk törlése" data-ok="Törlés" data-danger>
           <button class="danger small">Törlés</button></form></td></tr>
     {% else %}<tr><td colspan="6" class="muted">Nincs trönk - belső hívások így is működnek.</td></tr>{% endfor %}
   </table>

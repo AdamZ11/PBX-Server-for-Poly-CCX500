@@ -287,11 +287,16 @@
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeMenu(); if (wall) setWall(false); } });
 
   const CONFIRM = {
-    hangup: (x) => `Biztosan bontod a(z) ${x} hívását?`,
-    barge: (x) => `Beszállsz a(z) ${x} hívásába? Mindkét fél hallani fog.`,
+    hangup: (x) => ({ title: "Hívás bontása", ok: "Bontás", danger: true,
+                      text: `A(z) ${x} mellék hívása azonnal megszakad.` }),
+    barge: (x) => ({ title: "Beszállás a hívásba", ok: "Beszállás",
+                     text: `Beszállsz a(z) ${x} hívásába. Mindkét fél hallani fog téged.` }),
   };
   async function act(action, ext) {
-    if ((action === "hangup" && opts.confirmHangup || action === "barge") && !confirm(CONFIRM[action](ext))) return;
+    if (action === "hangup" && opts.confirmHangup || action === "barge") {
+      const c = CONFIRM[action](ext);
+      if (!(await ccxConfirm(c.text, c))) return;
+    }
     try {
       const r = await fetch("/callmap/action", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
                                                  body: JSON.stringify({ action, target: ext, me: opts.me }) });

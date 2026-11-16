@@ -11,7 +11,7 @@
     <td>{{ 'mindig' if e.record else '-' }}</td>
     <td>{% for m in (e.macs or '').split(',') if m %}<a class="mono" href="/phones/{{ m }}">{{ m }}</a> {% endfor %}</td>
     <td class="right">
-      <form method="post" action="/extensions/{{ e.ext }}/delete" onsubmit="return confirm('Törlöd a {{ e.ext }} melléket?')">
+      <form method="post" action="/extensions/{{ e.ext }}/delete" data-confirm="Törlöd a {{ e.ext }} melléket?" data-title="Mellék törlése" data-ok="Törlés" data-danger>
         <button class="danger small">Törlés</button></form>
     </td>
   </tr>

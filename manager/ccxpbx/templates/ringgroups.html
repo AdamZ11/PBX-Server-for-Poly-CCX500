@@ -7,7 +7,7 @@
   <tr><td><a href="/ringgroups/{{ g.num }}"><b>{{ g.num }}</b></a></td><td>{{ g.name }}</td>
       <td>{{ 'egyszerre mind' if g.strategy == 'ringall' else 'sorban' }}</td>
       <td>{{ g.members.replace(',', ', ') }}</td><td>{{ g.failover }}</td>
-      <td class="right"><form method="post" action="/ringgroups/{{ g.num }}/delete" onsubmit="return confirm('Törlöd?')">
+      <td class="right"><form method="post" action="/ringgroups/{{ g.num }}/delete" data-confirm="Törlöd a(z) {{ g.num }} csengetési csoportot?" data-title="Csoport törlése" data-ok="Törlés" data-danger>
         <button class="danger small">Törlés</button></form></td></tr>
   {% else %}<tr><td colspan="6" class="muted">Nincs csoport.</td></tr>{% endfor %}
 </table>

@@ -44,7 +44,7 @@
     {% for f in files %}<tr><td>{{ f.dir }}</td><td><a href="/phones/{{ phone.mac }}/files/{{ f.dir }}/{{ f.name }}">{{ f.name }}</a></td><td>{{ (f.size / 1024)|round(1) }} kB</td></tr>{% endfor %}
   </table>
   {% if files|selectattr('dir', 'equalto', 'overrides')|list %}
-  <form method="post" action="/phones/{{ phone.mac }}/action/clear-overrides" onsubmit="return confirm('Törlöd a telefonon / webfelületen tett beállításokat?')">
+  <form method="post" action="/phones/{{ phone.mac }}/action/clear-overrides" data-confirm="Törlöd a telefonon és a webfelületén kézzel tett beállításokat?" data-title="Helyi beállítások törlése" data-ok="Törlés" data-danger>
     <button class="danger small">Telefon oldali override-ok törlése</button>
     <small class="muted">A telefonon kézzel módosított beállítások felülírják a szerver konfigot.</small>
   </form>
@@ -110,9 +110,9 @@
 
 {% if not is_new %}
 <div class="row">
-  <form method="post" action="/phones/{{ phone.mac }}/autokeys" onsubmit="return confirm('Felülírja a jelenlegi gombkiosztást. Folytatod?')">
+  <form method="post" action="/phones/{{ phone.mac }}/autokeys" data-confirm="A jelenlegi gombkiosztás helyére automatikus kiosztás kerül." data-title="Gombkiosztás felülírása" data-ok="Felülírás" data-danger>
     <button class="secondary">Automatikus gombkiosztás (vonal + park + BLF mindenkire)</button></form>
-  <form method="post" action="/phones/{{ phone.mac }}/delete" onsubmit="return confirm('Törlöd a telefont?')">
+  <form method="post" action="/phones/{{ phone.mac }}/delete" data-confirm="Törlöd a telefont? A mellékei megmaradnak, csak a készülék kerül ki." data-title="Telefon törlése" data-ok="Törlés" data-danger>
     <button class="danger">Telefon törlése</button></form>
 </div>
 {% endif %}

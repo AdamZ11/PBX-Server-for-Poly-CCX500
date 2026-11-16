@@ -107,7 +107,7 @@
     <thead><tr><th>Feltöltött kép</th><th></th></tr></thead>
     {% for w in custom %}
     <tr><td class="mono">{{ w.file }}</td>
-        <td class="right"><form method="post" action="/settings/wallpaper/{{ w.file }}/delete" onsubmit="return confirm('Törlöd a {{ w.file }} képet?')">
+        <td class="right"><form method="post" action="/settings/wallpaper/{{ w.file }}/delete" data-confirm="Törlöd a(z) {{ w.file }} képet?" data-title="Háttérkép törlése" data-ok="Törlés" data-danger>
           <button class="danger small">Törlés</button></form></td></tr>
     {% endfor %}
   </table>

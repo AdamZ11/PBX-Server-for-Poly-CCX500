@@ -46,7 +46,7 @@
 
   <div class="row wrap">
     {% if update.available %}
-    <form method="post" action="/updates/apply" onsubmit="return confirm('Frissíted a CCXPBX-et? A kezelőfelület közben pár másodpercre újraindul, a hívások nem szakadnak meg.')">
+    <form method="post" action="/updates/apply" data-confirm="A kezelőfelület közben pár másodpercre újraindul, a hívások nem szakadnak meg." data-title="CCXPBX frissítése" data-ok="Frissítés">
       <button {{ 'disabled' if update.state == 'running' or update.pending or update.dirty }}>Frissítés most</button></form>
     {% endif %}
     <form method="post" action="/updates/check"><button class="secondary" {{ 'disabled' if update.state == 'running' or update.pending }}>Ellenőrzés most</button></form>
