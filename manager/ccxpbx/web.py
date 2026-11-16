@@ -300,13 +300,15 @@ def live_data(conn) -> dict:
     server = services.server_status(asterisk_ok=err is None)
     fw.pop("by_mac")
     trunks = {r["name"] for r in conn.execute("SELECT name FROM trunks")}
-    cmap = callmap.build(live["channels"] or [], extensions, trunks)
+    groups = [dict(r) for r in conn.execute("SELECT num, name, members FROM ring_groups ORDER BY num")]
+    cmap = callmap.build(live["channels"] or [], extensions, trunks, groups)
+    cmap["spy"] = settings.get("callmap_spy") == "1"
     return {"callmap": cmap, "contacts": contacts, "channels": channels, "regs": regs, "unknown": unknown, "phones": phones, "fw": fw,
             "extensions": extensions, "tiles": tiles, "counts": counts, "server": server,
             "ami_error": err, "time": localtime(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), tz)[11:]}
 
 
-STATE_LABELS = {"free": "Szabad", "ring": "Csörög", "busy": "Hívásban", "off": "Offline"}
+STATE_LABELS = {"free": "Szabad", "ring": "Csörög", "busy": "Hívásban", "hold": "Tartásban", "off": "Offline"}
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -322,6 +324,60 @@ async def callmap_page(request: Request, conn=Depends(get_db), _=Depends(require
     data = await run_in_threadpool(live_data, conn)
     return render(request, conn, "callmap.html", live=data, ami_error=data["ami_error"], live_page="callmap",
                   server=data["server"])
+
+
+CALLMAP_SPY = {"listen": ("q", "Belehallgatás"), "whisper": ("qw", "Súgás"), "barge": ("qB", "Beszállás")}
+
+
+@router.post("/callmap/action")
+async def callmap_action(request: Request, conn=Depends(get_db), _=Depends(require_login)):
+    """Call map actions. Calls start on the operator's own phone (`me`): it rings first, then dials."""
+    try:
+        body = await request.json()
+    except ValueError:
+        body = {}
+    action, target, me = str(body.get("action", "")), str(body.get("target", "")), str(body.get("me", ""))
+    exts = {r["ext"]: re.sub(r'["<>\\]', "", r["name"]) for r in conn.execute("SELECT ext, name FROM extensions")}
+
+    def fail(msg: str, status: int = 400):
+        return JSONResponse({"ok": False, "message": msg}, status_code=status)
+
+    if target not in exts:
+        return fail("Ismeretlen mellék.")
+    if action in ("call", "intercom", *CALLMAP_SPY):
+        if me not in exts:
+            return fail("Előbb válaszd ki a saját melléked a hívástérkép beállításaiban.")
+        if me == target:
+            return fail("A saját mellékedet nem hívhatod.")
+    if action in CALLMAP_SPY and db.get_settings(conn).get("callmap_spy") != "1":
+        return fail("A belehallgatás ki van kapcsolva (Beállítások).", 403)
+
+    def run(a):
+        if action == "call":
+            a.originate(f"PJSIP/{me}", f'"{exts[target]}" <{target}>', exten=target)
+            return f"A telefonod ({me}) csörög; ha felveszed, hívja a(z) {target} melléket."
+        if action == "intercom":
+            a.originate(f"PJSIP/{me}", f'"Intercom {target}" <{target}>', exten=plan.FC_INTERCOM + target)
+            return f"A telefonod ({me}) csörög; ha felveszed, a(z) {target} kihangosítva bekapcsol."
+        if action in CALLMAP_SPY:
+            opts, label = CALLMAP_SPY[action]
+            a.originate(f"PJSIP/{me}", f'"{label} {target}" <{target}>', application="ChanSpy",
+                        data=f"PJSIP/{target}-,{opts}")
+            return f"{label}: a telefonod ({me}) csörög, felvétel után hallod a(z) {target} hívását."
+        if action == "hangup":
+            chans = [c.get("Channel", "") for c in a.channels()
+                     if callmap._endpoint(c.get("Channel", "")) == target]
+            if not chans:
+                return "A melléknek most nincs hívása."
+            for ch in chans:
+                a.hangup(ch)
+            return f"A(z) {target} hívása bontva."
+        raise ami.AMIError("Ismeretlen művelet.")
+
+    msg, err = await run_in_threadpool(ami.safe_call, run, None)
+    if err:
+        return fail(err, 502)
+    return JSONResponse({"ok": True, "message": msg})
 
 
 @router.get("/api/live")
@@ -921,7 +977,7 @@ SETTING_HELP = {
 }
 SETTING_BOOLS = ("lock_prov_server", "prov_polling", "clock_24h", "paging_enabled", "intercom_unmute",
                  "rest_api", "web_ui", "softkey_park", "softkey_record", "led_incoming", "led_voicemail",
-                 "microbrowser", "phone_ui_brand")
+                 "microbrowser", "phone_ui_brand", "callmap_spy")
 
 
 @router.get("/updates", response_class=HTMLResponse)

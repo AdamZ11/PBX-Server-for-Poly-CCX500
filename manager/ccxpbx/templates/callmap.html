@@ -1,36 +1,73 @@
 {% extends "base.html" %}
 {% block title %}Hívástérkép · CCXPBX{% endblock %}
 {% block content %}
-<div class="page-head">
+<div class="page-head cm-head">
   <div class="row">
     <h1>Hívástérkép</h1>
     <span id="live-indicator" class="live" title="Az oldal 3 másodpercenként frissül">Élő</span>
   </div>
-  <div class="cm-legend" aria-label="Jelmagyarázat">
-    <span><i class="cm-dot free"></i>Szabad</span>
-    <span><i class="cm-dot ring"></i>Csörög</span>
-    <span><i class="cm-dot busy"></i>Hívásban</span>
-    <span><i class="cm-dot off"></i>Offline</span>
-    <span><i class="cm-line talk"></i>Beszélget</span>
-    <span><i class="cm-line ring"></i>Kicseng</span>
+  <div class="row wrap cm-tools">
+    <button type="button" class="secondary small" id="cm-settings-btn" aria-expanded="false" aria-controls="cm-settings">Beállítások</button>
+    <button type="button" class="secondary small" id="cm-wall-btn">Fali kijelző</button>
   </div>
 </div>
 <div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Az Asterisk nem érhető el: <span>{{ ami_error or '' }}</span></div>
 
-<div class="cm-wrap">
-  <section class="card cm-stage">
+<section class="card cm-settings" id="cm-settings" hidden>
+  <div class="cm-settings-grid">
+    <fieldset>
+      <legend>Mit mutasson</legend>
+      <label class="check"><input type="checkbox" data-opt="hideOffline"> Offline mellékek elrejtése</label>
+      <label class="check"><input type="checkbox" data-opt="onlyActive"> Csak a hívásban lévők</label>
+      <label class="check"><input type="checkbox" data-opt="showNames"> Nevek</label>
+      <label class="check"><input type="checkbox" data-opt="showDurations"> Hívásidő a vonalakon</label>
+      <label class="check"><input type="checkbox" data-opt="showList"> Hívások listája oldalt</label>
+    </fieldset>
+    <fieldset>
+      <legend>Elrendezés</legend>
+      <label class="check"><input type="radio" name="cm-layout" value="ring" data-opt="layout"> Kör</label>
+      <label class="check"><input type="radio" name="cm-layout" value="grid" data-opt="layout"> Rács</label>
+      <label class="check"><input type="radio" name="cm-layout" value="groups" data-opt="layout"> Csengetési csoportok szerint</label>
+      <label class="check"><input type="checkbox" data-opt="groupColors"> Csoportok színezése</label>
+    </fieldset>
+    <fieldset>
+      <legend>Műveletek</legend>
+      <label>Saját mellékem (erről indulnak a hívások)
+        <select data-opt="me" id="cm-me"><option value="">– válassz –</option></select></label>
+      <label class="check"><input type="checkbox" data-opt="confirmHangup"> Bontás előtt kérdezzen rá</label>
+      <label class="check"><input type="checkbox" data-opt="sound"> Hangjelzés bejövő külső hívásnál</label>
+      <small class="muted">{% if settings.callmap_spy == '1' %}A belehallgatás engedélyezve van.{% else %}Belehallgatás, súgás és beszállás a <a href="/settings">Beállításokban</a> kapcsolható be.{% endif %}</small>
+    </fieldset>
+  </div>
+  <p class="muted small">A beállításokat ez a böngésző jegyzi meg.</p>
+</section>
+
+<div class="cm-wrap" id="cm-wrap">
+  <section class="card cm-stage" id="cm-stage">
+    <div class="cm-legend" aria-label="Jelmagyarázat">
+      <span><i class="cm-dot free"></i>Szabad</span>
+      <span><i class="cm-dot ring"></i>Csörög</span>
+      <span><i class="cm-dot busy"></i>Hívásban</span>
+      <span><i class="cm-dot hold"></i>Tartásban</span>
+      <span><i class="cm-dot off"></i>Offline</span>
+      <span><i class="cm-line talk"></i>Beszélget</span>
+      <span><i class="cm-line ring"></i>Kicseng</span>
+      <span><i class="cm-line hold"></i>Tartva</span>
+    </div>
     <svg id="cm-svg" viewBox="0 0 1000 720" role="img" aria-labelledby="cm-title">
       <title id="cm-title">Mellékek és folyamatban lévő hívások</title>
     </svg>
-    <p class="muted small center" id="cm-empty" hidden>Még nincs mellék. Vegyél fel mellékeket, és itt látszanak.</p>
+    <div class="cm-menu" id="cm-menu" hidden role="menu"></div>
+    <p class="muted small center" id="cm-empty" hidden></p>
+    <button type="button" class="cm-wall-exit" id="cm-wall-exit">Kilépés a fali kijelzőből</button>
   </section>
-  <aside class="card cm-side">
+  <aside class="card cm-side" id="cm-side">
     <h2>Folyamatban <span class="muted" id="cm-count"></span></h2>
     <ul class="cm-calls" id="cm-calls"></ul>
-    <p class="muted small">Kattints egy mellékre a beállításaihoz. A külső hívások a jobb oldalon, a szolgáltatások
-      (hangposta, konferencia, parkoló) a bal oldalon jelennek meg.</p>
+    <p class="muted small">Kattints egy mellékre a műveletekhez: hívás a telefonodról, intercom, bontás{% if settings.callmap_spy == '1' %}, belehallgatás{% endif %}.</p>
   </aside>
 </div>
+<div class="cm-toast" id="cm-toast" role="status" hidden></div>
 
 <script type="application/json" id="cm-data">{{ live.callmap|tojson }}</script>
 <script src="{{ static_url('callmap.js') }}" defer></script>

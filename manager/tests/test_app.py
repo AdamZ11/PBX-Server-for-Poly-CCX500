@@ -359,3 +359,44 @@ def test_home_screen_save_json(client):
     r = client.post(f"/phones/{mac}/screen", headers={"Accept": "application/json"},
                     data={"key_type_1": "speeddial", "key_value_1": "x"})
     assert r.json() == {"ok": False, "messages": [["err", r.json()["messages"][0][1]]]} and "hívószám" in r.json()["messages"][0][1]
+
+
+def test_callmap_actions(client, monkeypatch):
+    from ccxpbx import ami, web
+    login(client)
+    conn = db.connect()
+    for ext in ("3001", "3002"):
+        conn.execute("INSERT OR IGNORE INTO extensions(ext, name, secret, vm_pin) VALUES (?, ?, 'x', '1')",
+                     (ext, f'Teszt "{ext}"'))
+    conn.commit()
+    calls = []
+
+    class Fake:
+        def originate(self, channel, callerid, **kw):
+            calls.append(("orig", channel, callerid, kw))
+
+        def channels(self):
+            return [{"Channel": "PJSIP/3002-0001"}, {"Channel": "PJSIP/30021-0002"}, {"Channel": "PJSIP/3001-0003"}]
+
+        def hangup(self, channel):
+            calls.append(("hangup", channel))
+
+    monkeypatch.setattr(web.ami, "safe_call", lambda fn, default=None: (fn(Fake()), None))
+    post = lambda **b: client.post("/callmap/action", json=b)
+
+    assert post(action="call", target="3002").json()["ok"] is False          # no own extension yet
+    assert post(action="call", target="9999", me="3001").status_code == 400  # unknown target
+    r = post(action="call", target="3002", me="3001")
+    # quotes in the name are dropped so the caller ID stays valid
+    assert r.json()["ok"] and calls[-1] == ("orig", "PJSIP/3001", '"Teszt 3002" <3002>', {"exten": "3002"})
+    post(action="intercom", target="3002", me="3001")
+    assert calls[-1][3] == {"exten": "*803002"}
+    assert post(action="listen", target="3002", me="3001").status_code == 403  # spy is off by default
+    db.set_setting(conn, "callmap_spy", "1"); conn.commit()
+    assert post(action="whisper", target="3002", me="3001").json()["ok"]
+    assert calls[-1][3] == {"application": "ChanSpy", "data": "PJSIP/3002-,qw"}
+    calls.clear()
+    assert post(action="hangup", target="3002").json()["ok"]
+    assert calls == [("hangup", "PJSIP/3002-0001")]                          # not 30021
+    db.set_setting(conn, "callmap_spy", "0"); conn.commit()
+    assert ami.hint_state("16") == "hold"

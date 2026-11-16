@@ -143,6 +143,7 @@ DEFAULT_SETTINGS = {
     "phone_ui_brand": "0",        # brand colours for the phone's status bar / menus (needs reboot)
     "led_incoming": "1",          # status LED flashes on incoming calls (call.offering.led)
     "led_voicemail": "1",         # status LED flashes for new voicemail (msg.mwi.x.led)
+    "callmap_spy": "0",           # listen / whisper / barge from the call map (ChanSpy)
     "site_overrides": "",         # extra Poly parameters for all phones (key=value lines)
     # --- PBX ---
     "inbound_default": "",        # default destination for unmatched DIDs

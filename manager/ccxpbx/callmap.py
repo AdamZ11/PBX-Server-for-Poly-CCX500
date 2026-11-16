@@ -42,8 +42,9 @@ def _seconds(duration: str) -> int:
     return total
 
 
-def build(channels: list[dict], extensions: list[dict], trunks: set[str]) -> dict:
-    """channels: raw CoreShowChannel events; extensions: [{num, name, state}] (state from the hints)."""
+def build(channels: list[dict], extensions: list[dict], trunks: set[str], groups: list[dict] | None = None) -> dict:
+    """channels: raw CoreShowChannel events; extensions: [{num, name, state}] (state from the hints,
+    'hold' when the phone put its call on hold); groups: ring groups [{num, name, members}]."""
     ext_nums = {e["num"] for e in extensions}
     nodes = {f"ext:{e['num']}": {"id": f"ext:{e['num']}", "kind": "ext", "label": e["num"], "sub": e["name"],
                                   "state": e["state"]} for e in extensions}
@@ -89,13 +90,14 @@ def build(channels: list[dict], extensions: list[dict], trunks: set[str]) -> dic
         src = party(origin)
         others = [c for c in legs if c is not origin]
         secs = max(_seconds(c.get("Duration")) for c in legs)
+        names = [c.get("Channel", "") for c in legs]
         if not others:
             dst = service(origin)
             if dst:
-                edges.append({"from": src, "to": dst, "state": "talk", "secs": secs})
+                edges.append({"from": src, "to": dst, "state": "talk", "secs": secs, "channels": names})
             elif (origin.get("ChannelStateDesc") or "").lower() != "up":
                 edges.append({"from": src, "to": None, "state": "dial", "secs": secs,
-                              "number": origin.get("Exten", "")})
+                              "number": origin.get("Exten", ""), "channels": names})
             continue
         for c in others:
             dst = party(c)
@@ -105,13 +107,19 @@ def build(channels: list[dict], extensions: list[dict], trunks: set[str]) -> dic
             bridged = c.get("BridgeId") and c.get("BridgeId") == origin.get("BridgeId")
             state = "talk" if bridged or (state_desc == "up" and (origin.get("ChannelStateDesc") or "").lower() == "up") \
                 else "ring"
-            edges.append({"from": src, "to": dst, "state": state, "secs": _seconds(c.get("Duration")) or secs})
+            if state == "talk" and any(nodes.get(n, {}).get("state") == "hold" for n in (src, dst)):
+                state = "hold"
+            edges.append({"from": src, "to": dst, "state": state, "secs": _seconds(c.get("Duration")) or secs,
+                          "channels": [origin.get("Channel", ""), c.get("Channel", "")]})
     # a ring group rings several phones; once one answers the others drop, so no special casing is needed
     for e in edges:
         for end in (e["from"], e["to"]):
             n = nodes.get(end)
-            if n and n["kind"] == "ext" and n["state"] in ("free", "off"):
+            if n and n["kind"] == "ext" and n["state"] in ("free", "off") and e["state"] != "hold":
                 n["state"] = "ring" if e["state"] == "ring" and end == e["to"] else "busy"
-    return {"nodes": list(nodes.values()), "edges": edges,
+    group_list = [{"num": g["num"], "name": g["name"],
+                   "members": [m for m in (g.get("members") or "").split(",") if m in ext_nums]} for g in groups or []]
+    return {"nodes": list(nodes.values()), "edges": edges, "groups": group_list,
             "talking": sum(e["state"] == "talk" for e in edges),
+            "holding": sum(e["state"] == "hold" for e in edges),
             "ringing": sum(e["state"] == "ring" for e in edges)}

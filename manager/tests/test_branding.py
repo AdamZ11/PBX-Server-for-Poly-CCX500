@@ -55,7 +55,7 @@ def test_phone_params_for_look(snap):
 
 
 @pytest.mark.parametrize("bits,state", [("0", "free"), ("1", "busy"), ("2", "busy"), ("4", "off"), ("8", "ring"),
-                                        ("9", "busy"), ("16", "busy"), ("-1", "off"), ("x", "off")])
+                                        ("9", "busy"), ("16", "hold"), ("17", "hold"), ("-1", "off"), ("x", "off")])
 def test_hint_states(bits, state):
     assert ami.hint_state(bits) == state
 

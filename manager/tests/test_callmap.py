@@ -51,3 +51,15 @@ def test_services_and_conference():
 def test_no_channels():
     m = callmap.build([], EXTS, set())
     assert m["edges"] == [] and len(m["nodes"]) == 4
+
+
+def test_hold_and_groups():
+    exts = [dict(e) for e in EXTS]
+    exts[1]["state"] = "hold"
+    chans = [ch("PJSIP/2001-0001", "1.1", "1.1", bridge="b1"), ch("PJSIP/2002-0002", "1.2", "1.1", bridge="b1")]
+    m = callmap.build(chans, exts, set(), [{"num": "6000", "name": "Sales", "members": "2001,2003,9999"}])
+    assert edges(m) == {("ext:2001", "ext:2002", "hold")}
+    assert m["holding"] == 1 and m["talking"] == 0
+    assert {n["id"]: n["state"] for n in m["nodes"]}["ext:2002"] == "hold"
+    assert m["groups"] == [{"num": "6000", "name": "Sales", "members": ["2001", "2003"]}]
+    assert m["edges"][0]["channels"] == ["PJSIP/2001-0001", "PJSIP/2002-0002"]

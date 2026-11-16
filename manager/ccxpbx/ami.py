@@ -131,12 +131,30 @@ class AMI:
         except ValueError:
             return 0, 0
 
+    def originate(self, channel: str, callerid: str, *, exten: str = "", context: str = "from-internal",
+                  application: str = "", data: str = "") -> dict:
+        """Ring `channel` first; when answered, dial `exten` (or run `application`). Returns at once."""
+        fields = {"Channel": channel, "CallerID": callerid, "Async": "true", "Timeout": "30000"}
+        if application:
+            fields.update(Application=application, Data=data)
+        else:
+            fields.update(Context=context, Exten=exten, Priority="1")
+        resp = self.action("Originate", **fields)[0]
+        if resp.get("Response") == "Error":
+            raise AMIError(resp.get("Message", "originate failed"))
+        return resp
+
+    def hangup(self, channel: str) -> None:
+        resp = self.action("Hangup", Channel=channel)[0]
+        if resp.get("Response") == "Error":
+            raise AMIError(resp.get("Message", "hangup failed"))
+
     def parked_calls(self) -> list[dict]:
         return [m for m in self.action("ParkedCalls")[1:] if m.get("Event") == "ParkedCall"]
 
 
 def hint_state(status: str) -> str:
-    """Asterisk extension state bits -> CCXPBX status (free / ring / busy / off)."""
+    """Asterisk extension state bits -> CCXPBX status (free / ring / hold / busy / off)."""
     try:
         bits = int(status)
     except ValueError:
@@ -145,7 +163,9 @@ def hint_state(status: str) -> str:
         return "off"
     if bits & 8 and not bits & 1:  # ringing (not also in use)
         return "ring"
-    if bits & (1 | 2 | 16):        # in use / busy / on hold
+    if bits & 16:                  # on hold (the phone pressed Hold)
+        return "hold"
+    if bits & (1 | 2):             # in use / busy
         return "busy"
     return "free"
 
