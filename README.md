@@ -117,6 +117,8 @@ felülírható).
 | Kifelé hívás | Trönkök menü: SIP szolgáltató + kimenő minta (pl. `_0.` levág 1) | |
 | Titkosítás | Beállítások → SIP transport *TLS + SRTP* (a saját CA-t a szerver kiküldi a telefonra) | |
 | Firmware frissítés | Beállítások → firmware feltöltés és kiválasztás | a telefon a következő induláskor frissít |
+| Hívástérkép | *Hívástérkép* menü: a mellékek körben, a folyamatban lévő hívások élő vonalakkal (beszélget / kicseng), a külső számok és a szolgáltatások (hangposta, konferencia, parkoló) külön; 3 másodpercenként frissül | |
+| Firmware-figyelő | *Telefonok* oldal: melyik telefonon milyen firmware fut, melyik vár frissítésre vagy tér el a többitől, melyik nem jelentkezett 3 napja; az Áttekintés is figyelmeztet | |
 | Eszközkezelés | Telefon oldal: szinkronizálás, újraindítás (SIP / REST), eszközinfó, hálózat, vonalak, hívásállapot, click-to-dial, feltöltött naplók | |
 | Egyedi paraméter | bármely Poly paraméter `kulcs=érték` – telefononként vagy mindenkire | |
 

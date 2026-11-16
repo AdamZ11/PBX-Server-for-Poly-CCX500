@@ -91,6 +91,9 @@ def test_full_flow(client):
     page = client.get("/phones").text
     assert 'id="fw-summary"' in page and "8.1.3.1301</b> · 1 telefon" in page
     assert "Most a telefonokon" in client.get("/settings").text
+    page = client.get("/callmap").text
+    assert 'id="cm-svg"' in page and '"ext:2001"' in page
+    assert client.get("/api/live").json()["callmap"]["edges"] == []
 
     # apply writes the Asterisk files even when Asterisk is not running
     assert client.post("/apply", data={}, follow_redirects=False).status_code == 303

@@ -76,6 +76,10 @@
       }
     },
 
+    callmap(d) {
+      if (window.CallMap) window.CallMap.update(d.callmap);
+    },
+
     phones(d) {
       function fwCell(p) {
         let h = `<span class="mono">${esc(p.firmware)}</span>`;

@@ -15,7 +15,7 @@
 <body{% if live_page %} data-live="{{ live_page }}"{% endif %}>
 {% if user %}
 {%- set path = request.url.path -%}
-{%- set nav = [('/', 'Áttekintés'), ('/extensions', 'Mellékek'), ('/phones', 'Telefonok'), ('/ringgroups', 'Csengetési csoportok'), ('/trunks', 'Trunkök és útvonalak'), ('/settings', 'Beállítások')] -%}
+{%- set nav = [('/', 'Áttekintés'), ('/callmap', 'Hívástérkép'), ('/extensions', 'Mellékek'), ('/phones', 'Telefonok'), ('/ringgroups', 'Csengetési csoportok'), ('/trunks', 'Trunkök és útvonalak'), ('/settings', 'Beállítások')] -%}
 <div class="app">
   <aside class="sidebar">
     <a class="brand" href="/" aria-label="CCXPBX kezdőlap">{{ mark(36) }}<span class="wordmark">CCX<span>PBX</span></span></a>

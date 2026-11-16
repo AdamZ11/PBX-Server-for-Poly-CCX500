@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Hívástérkép · CCXPBX{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="row">
+    <h1>Hívástérkép</h1>
+    <span id="live-indicator" class="live" title="Az oldal 3 másodpercenként frissül">Élő</span>
+  </div>
+  <div class="cm-legend" aria-label="Jelmagyarázat">
+    <span><i class="cm-dot free"></i>Szabad</span>
+    <span><i class="cm-dot ring"></i>Csörög</span>
+    <span><i class="cm-dot busy"></i>Hívásban</span>
+    <span><i class="cm-dot off"></i>Offline</span>
+    <span><i class="cm-line talk"></i>Beszélget</span>
+    <span><i class="cm-line ring"></i>Kicseng</span>
+  </div>
+</div>
+<div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Az Asterisk nem érhető el: <span>{{ ami_error or '' }}</span></div>
+
+<div class="cm-wrap">
+  <section class="card cm-stage">
+    <svg id="cm-svg" viewBox="0 0 1000 720" role="img" aria-labelledby="cm-title">
+      <title id="cm-title">Mellékek és folyamatban lévő hívások</title>
+    </svg>
+    <p class="muted small center" id="cm-empty" hidden>Még nincs mellék. Vegyél fel mellékeket, és itt látszanak.</p>
+  </section>
+  <aside class="card cm-side">
+    <h2>Folyamatban <span class="muted" id="cm-count"></span></h2>
+    <ul class="cm-calls" id="cm-calls"></ul>
+    <p class="muted small">Kattints egy mellékre a beállításaihoz. A külső hívások a jobb oldalon, a szolgáltatások
+      (hangposta, konferencia, parkoló) a bal oldalon jelennek meg.</p>
+  </aside>
+</div>
+
+<script type="application/json" id="cm-data">{{ live.callmap|tojson }}</script>
+<script src="/static/callmap.js" defer></script>
+{% endblock %}

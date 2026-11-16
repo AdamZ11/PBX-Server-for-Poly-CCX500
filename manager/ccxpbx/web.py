@@ -11,7 +11,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import ami, asterisk_gen, config, db, httpauth, plan, poly, polyrest, restview, services, updates, wallpapers
+from . import ami, asterisk_gen, callmap, config, db, httpauth, plan, poly, polyrest, restview, services, updates, wallpapers
 from .services import get_db
 
 router = APIRouter()
@@ -287,7 +287,9 @@ def live_data(conn) -> dict:
     ]
     server = services.server_status(asterisk_ok=err is None)
     fw.pop("by_mac")
-    return {"contacts": contacts, "channels": channels, "regs": regs, "unknown": unknown, "phones": phones, "fw": fw,
+    trunks = {r["name"] for r in conn.execute("SELECT name FROM trunks")}
+    cmap = callmap.build(live["channels"] or [], extensions, trunks)
+    return {"callmap": cmap, "contacts": contacts, "channels": channels, "regs": regs, "unknown": unknown, "phones": phones, "fw": fw,
             "extensions": extensions, "tiles": tiles, "counts": counts, "server": server,
             "ami_error": err, "time": localtime(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), tz)[11:]}
 
@@ -301,6 +303,13 @@ async def dashboard(request: Request, conn=Depends(get_db), _=Depends(require_lo
     mismatch = services.server_host_mismatch(db.get_settings(conn)["server_host"])
     return render(request, conn, "dashboard.html", live=data, ami_error=data["ami_error"],
                   ip_mismatch=mismatch, live_page="dashboard", server=data["server"])
+
+
+@router.get("/callmap", response_class=HTMLResponse)
+async def callmap_page(request: Request, conn=Depends(get_db), _=Depends(require_login)):
+    data = await run_in_threadpool(live_data, conn)
+    return render(request, conn, "callmap.html", live=data, ami_error=data["ami_error"], live_page="callmap",
+                  server=data["server"])
 
 
 @router.get("/api/live")
