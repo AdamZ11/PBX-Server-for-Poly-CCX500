@@ -57,8 +57,11 @@ def test_master_and_directory_xml(snap):
 
 def test_digitmap(snap):
     segs = plan.build_digitmap(snap["extensions"], snap["ring_groups"], snap["outbound"]).split("|")
-    assert "[26]xxx" in segs and "*80xxxx" in segs and "**xxxx" in segs
+    assert "[23456]xxx" in segs and "*80xxxx" in segs and "**xxxx" in segs
     assert "0x.T" in segs and "112" in segs
+    # a phone configured before an extension in another plan range existed can still dial it
+    only = plan.build_digitmap([{"ext": "2001"}], [], []).split("|")
+    assert "[23456]xxx" in only
 
 
 def test_asterisk_files(snap):

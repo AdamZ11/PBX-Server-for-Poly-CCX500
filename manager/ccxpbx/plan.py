@@ -163,7 +163,9 @@ def build_digitmap(extensions, ring_groups, outbound) -> str:
     """Poly digit map that dials instantly for internal numbers, with a timeout for external ones."""
     segments = []
     internal = sorted({e["ext"] for e in extensions} | {g["num"] for g in ring_groups})
-    by_len: dict[int, set] = {}
+    # The numbering plan ranges (2000-5999 extensions, 6xxx ring groups) are always included, so a phone
+    # configured earlier can already dial an extension added later, without fetching its config again.
+    by_len: dict[int, set] = {4: set("23456")}
     for num in internal:
         by_len.setdefault(len(num), set()).add(num[0])
     for length, firsts in sorted(by_len.items()):
