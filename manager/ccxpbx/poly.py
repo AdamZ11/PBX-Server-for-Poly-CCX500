@@ -396,9 +396,11 @@ def render_directory(snapshot: dict, phone: dict | None = None, uploaded: str = 
     (verified on 9.5.1; EFK speed dial line keys are not shown at all). So:
       * extensions are listed without <sd>, they must not turn into keys by themselves;
       * with a phone, its "speed dial" keys become favourites, numbered in key order;
-      * contacts the user added on the phone (its uploaded copy) are kept, their favourites after ours.
+      * contacts the user added on the phone (its uploaded copy) are kept, their favourites after ours;
+      * the phone's own extensions are left out of its directory.
     """
     exts = {e["ext"]: e for e in snapshot["extensions"]}
+    own = {line["ext"] for line in (phone or {}).get("lines", [])}
     favourites = []   # (number, label) in key order
     if phone:
         for key in phone.get("keys", []):
@@ -411,7 +413,7 @@ def render_directory(snapshot: dict, phone: dict | None = None, uploaded: str = 
         name = label or (ext["name"] if ext else number)
         fav_sd.setdefault(number, (n, name))
     for ext in snapshot["extensions"]:
-        if not ext["in_directory"] and ext["ext"] not in fav_sd:
+        if ext["ext"] in own or (not ext["in_directory"] and ext["ext"] not in fav_sd):
             continue
         sd, name = fav_sd.pop(ext["ext"], (None, ext["name"]))
         items.append(_dir_item(*_split_name(name), ext["ext"], sd))

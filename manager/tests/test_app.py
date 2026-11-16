@@ -220,7 +220,7 @@ def test_home_screen_editor(client):
     assert 'homeScreen.messages.enable' not in cfg   # visible icons keep the phone default
     # the speed dial key reaches the phone as a favourite in its own directory
     d = prov(client, f"/prov/contacts/{mac}-directory.xml").text
-    assert "<ct>112</ct><sd>1</sd>" in d and "<ct>2001</ct><bw>" in d
+    assert "<ct>112</ct><sd>1</sd>" in d and "<ct>2001</ct>" not in d and "<ct>2002</ct>" in d   # 2001 = this phone
 
     # an invalid number is rejected and nothing changes
     r = client.post(f"/phones/{mac}/screen", data={"key_type_1": "speeddial", "key_value_1": "abc"}, follow_redirects=False)
@@ -337,6 +337,9 @@ def test_directory_has_no_speed_dials():
     assert "<ln>Béla</ln><ct>2002</ct><sd>2</sd>" in xml                 # speed dial to an extension
     assert "<fn>Segély</fn><ln></ln><ct>112</ct><sd>1</sd>" in xml       # external speed dial
     assert "<ct>0612345678</ct><sd>3</sd>" in xml and xml.count("<ct>2001</ct>") == 1
+    # the phone's own extension is not in its own directory (also not from its uploaded copy)
+    xml = poly.render_directory(snap, dict(phone, lines=[{"ext": "2001"}]), uploaded)
+    assert "<ct>2001</ct>" not in xml and "<ct>2002</ct>" in xml
 
 
 def test_home_screen_save_json(client):
