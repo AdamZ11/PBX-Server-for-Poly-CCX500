@@ -88,6 +88,9 @@ def test_full_flow(client):
 
     seen = db.connect().execute("SELECT model, firmware FROM seen_devices").fetchone()
     assert (seen["model"], seen["firmware"]) == ("CCX500", "8.1.3.1301")
+    page = client.get("/phones").text
+    assert 'id="fw-summary"' in page and "8.1.3.1301</b> · 1 telefon" in page
+    assert "Most a telefonokon" in client.get("/settings").text
 
     # apply writes the Asterisk files even when Asterisk is not running
     assert client.post("/apply", data={}, follow_redirects=False).status_code == 303

@@ -77,13 +77,19 @@
     },
 
     phones(d) {
+      function fwCell(p) {
+        let h = `<span class="mono">${esc(p.firmware)}</span>`;
+        if (p.fw_state === "pending" || p.fw_state === "differs") h += ` <span class="pill warn">${esc(p.fw_label)}</span>`;
+        if (p.stale_days) h += ` <span class="pill err">${esc(p.stale_days)} napja nem jelentkezett</span>`;
+        return h;
+      }
       document.querySelectorAll("tr[data-mac]").forEach((row) => {
         const p = d.phones[row.dataset.mac];
         if (!p) return;
         setHTML($(".js-status", row), !p.ext ? status("off", "nincs vonal")
           : p.registered ? status("free", "Regisztrált") : status("off", "Offline"));
         setHTML($(".js-ip", row), esc(p.ip));
-        setHTML($(".js-fw", row), esc(p.firmware));
+        setHTML($(".js-fw", row), fwCell(p));
         setHTML($(".js-seen", row), esc(p.last_seen));
       });
     },

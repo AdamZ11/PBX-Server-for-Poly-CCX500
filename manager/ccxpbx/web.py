@@ -200,7 +200,9 @@ def live_data(conn) -> dict:
                 "states": a.extension_states()}
 
     live, err = ami.safe_call(collect, {"contacts": [], "channels": [], "regs": [], "states": {}})
-    tz = db.get_settings(conn).get("timezone_name", "")
+    settings = db.get_settings(conn)
+    tz = settings.get("timezone_name", "")
+    fw = services.firmware_report(conn, settings)
     ext_to_mac = {r["ext"]: r["mac"] for r in conn.execute("SELECT ext, mac FROM phone_lines")}
     contacts = [{
         "endpoint": c.get("Endpoint", ""),
@@ -245,6 +247,9 @@ def live_data(conn) -> dict:
             "ip": services.phone_ip(conn, mac, live["contacts"] or []),
             "model": s.get("model", ""),
             "firmware": s.get("firmware", ""),
+            "fw_state": fw["by_mac"].get(mac, {}).get("state", ""),
+            "fw_label": fw["by_mac"].get(mac, {}).get("label_text", ""),
+            "stale_days": fw["by_mac"].get(mac, {}).get("stale_days", 0),
             "user_agent": (contact["ua"] if contact else "") or s.get("user_agent", ""),
             "last_seen": s.get("last_seen", ""),
             "last_file": s.get("last_file", ""),
@@ -281,7 +286,8 @@ def live_data(conn) -> dict:
          "sub": "regisztrálva / összes" if regs else "nincs regisztráló trunk"},
     ]
     server = services.server_status(asterisk_ok=err is None)
-    return {"contacts": contacts, "channels": channels, "regs": regs, "unknown": unknown, "phones": phones,
+    fw.pop("by_mac")
+    return {"contacts": contacts, "channels": channels, "regs": regs, "unknown": unknown, "phones": phones, "fw": fw,
             "extensions": extensions, "tiles": tiles, "counts": counts, "server": server,
             "ami_error": err, "time": localtime(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), tz)[11:]}
 
@@ -394,7 +400,10 @@ async def phone_list(request: Request, conn=Depends(get_db), _=Depends(require_l
         p["seen"] = dict(seen) if seen else None
         p["registered"] = bool(p["lines"]) and p["lines"][0]["ext"] in registered
         phones.append(p)
-    return render(request, conn, "phones.html", phones=phones, ami_error=err, live_page="phones")
+    fw = services.firmware_report(conn, db.get_settings(conn))
+    for p in phones:
+        p["fw"] = fw["by_mac"].get(p["mac"], {})
+    return render(request, conn, "phones.html", phones=phones, fw=fw, ami_error=err, live_page="phones")
 
 
 def parse_keys(form, n_lines: int) -> list[tuple]:
@@ -970,6 +979,7 @@ def settings_form(request: Request, conn=Depends(get_db), _=Depends(require_logi
     snap = db.snapshot(conn)
     auto_map = plan.build_digitmap(snap["extensions"], snap["ring_groups"], snap["outbound"])
     return render(request, conn, "settings.html", firmware=firmware, auto_digitmap=auto_map,
+                  fw=services.firmware_report(conn, snap["settings"]),
                   prov_url=f"http://{poly.prov_server_name(snap['settings'])}",
                   wallpapers=wallpapers.available())
 

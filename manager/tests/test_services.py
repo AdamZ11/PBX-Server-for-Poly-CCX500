@@ -72,3 +72,39 @@ def test_restart_dropped_connection_is_success():
 def test_restart_other_errors_are_reported():
     with pytest.raises(ami.AMIError):
         services.restart_asterisk(FakeAMI(ami.AMIError("Permission denied")))
+
+
+def _fw_db(rows):
+    conn = db.connect(":memory:")
+    db.init_db(conn)
+    for mac, label, fw, days_ago in rows:
+        conn.execute("INSERT INTO phones(mac, label) VALUES (?, ?)", (mac, label))
+        if days_ago is not None:
+            conn.execute("INSERT INTO seen_devices(mac, ip, firmware, last_seen) VALUES (?, '', ?, datetime('now', ?))",
+                         (mac, fw, f"-{days_ago} days"))
+    return conn
+
+
+def test_firmware_report_against_selected_file():
+    conn = _fw_db([("aa", "A", "9.5.1.0130", 0), ("bb", "B", "9.2.0.1000", 0), ("cc", "C", "", None)])
+    fw = services.firmware_report(conn, {"firmware_file": "CCX500-9.5.1.0130.zip"})
+    assert fw["target"] == "9.5.1.0130"
+    states = {r["mac"]: r["state"] for r in fw["phones"]}
+    assert states == {"aa": "ok", "bb": "pending", "cc": "never"}
+    assert fw["by_mac"]["bb"]["older"] and fw["pending"] == 1 and fw["issues"] == 1
+    assert fw["versions"] == [("9.5.1.0130", 1), ("9.2.0.1000", 1)]   # tie: newer first
+
+
+def test_firmware_report_without_target_uses_majority_and_flags_stale():
+    conn = _fw_db([("aa", "A", "9.5.1.0130", 0), ("bb", "B", "9.5.1.0130", 5), ("cc", "C", "9.2.0.1000", 0)])
+    fw = services.firmware_report(conn, {"firmware_file": ""})
+    assert fw["reference"] == "9.5.1.0130" and fw["mixed"]
+    assert fw["by_mac"]["cc"]["state"] == "differs" and fw["differs"] == 1
+    assert fw["by_mac"]["bb"]["stale_days"] == 5 and fw["stale"] == 1
+    assert fw["issues"] == 2
+
+
+def test_firmware_report_unparsable_file_name():
+    conn = _fw_db([("aa", "A", "9.5.1.0130", 0), ("bb", "B", "9.5.1.0130", 0)])
+    fw = services.firmware_report(conn, {"firmware_file": "sip.ld"})
+    assert fw["target_unparsed"] and not fw["issues"] and not fw["mixed"]

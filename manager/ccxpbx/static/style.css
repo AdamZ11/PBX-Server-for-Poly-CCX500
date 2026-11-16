@@ -409,3 +409,12 @@ table.verify td.ok { color: #146C3B; }
   .inline { margin-left: 0; }
   .login-brand { padding: 32px 24px; }
 }
+
+/* firmware watch */
+.fw-summary .page-head { margin-bottom: 8px; }
+.fw-versions { gap: 8px; margin-bottom: 4px; }
+.fw-version { padding: 4px 10px; border: 1px solid var(--ccx-line, #DADDE3); border-radius: 999px; font-size: 13px; }
+.fw-version.target { border-color: #146C3B; background: #E8F5EE; color: #146C3B; }
+.fw-notes { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
+.fw-notes li { margin: 4px 0; }
+.fw-notes:empty { display: none; }

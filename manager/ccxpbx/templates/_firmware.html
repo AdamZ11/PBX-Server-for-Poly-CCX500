@@ -1,0 +1,48 @@
+{# Firmware watch: which version the phones run, compared with the selected firmware file. #}
+{% macro fw_cell(p) -%}
+<span class="mono">{{ p.firmware or '' }}</span>
+{%- if p.fw_state in ('pending', 'differs') %} <span class="pill warn">{{ p.fw_label }}</span>{% endif %}
+{%- if p.stale_days %} <span class="pill err">{{ p.stale_days }} napja nem jelentkezett</span>{% endif %}
+{%- endmacro %}
+
+{% macro fw_summary(fw, compact=False) %}
+<section class="card fw-summary" id="fw-summary">
+  <div class="page-head">
+    <h2>Firmware</h2>
+    {% if fw.phones and not fw.issues %}<span class="pill ok">Minden telefon rendben</span>
+    {% elif fw.issues %}<span class="pill warn">{{ fw.issues }} telefon figyelmet kér</span>{% endif %}
+  </div>
+  {% if not fw.versions %}
+  <p class="muted">Még egy telefon sem jelentkezett, ezért nem tudni, milyen firmware fut rajtuk.</p>
+  {% else %}
+  <div class="row wrap fw-versions">
+    {% for v, n in fw.versions %}
+    <span class="fw-version{{ ' target' if v == fw.reference }}"><b class="mono">{{ v }}</b> · {{ n }} telefon{% if v == fw.target %} · kiválasztott{% endif %}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <ul class="fw-notes">
+    {% if fw.target %}
+    <li>Kiválasztott firmware: <span class="mono">{{ fw.target_file }}</span> ({{ fw.target }}).</li>
+    {% elif fw.target_unparsed %}
+    <li>A kiválasztott fájl (<span class="mono">{{ fw.target_file }}</span>) nevéből nem derül ki a verzió, ezért csak azt
+      jelzem, ha a telefonok egymástól eltérnek.</li>
+    {% elif not compact %}
+    <li>Nincs kiválasztott firmware, ezért a legtöbb telefonon futó verzióhoz hasonlítok. Frissíteni a
+      <a href="/settings#firmware">Beállításokban</a> lehet: töltsd fel a fájlt, majd válaszd ki.</li>
+    {% endif %}
+    {% if fw.pending %}
+    <li><b>{{ fw.pending }} telefon frissítésre vár.</b> A kiválasztott firmware-t a következő induláskor tölti le; a
+      telefon oldalán az <i>Újraindítás</i> gombbal azonnal indítható. A frissítés pár percig tart, közben a telefon nem hívható.</li>
+    {% endif %}
+    {% if fw.differs %}
+    <li><b>{{ fw.differs }} telefon más verziót futtat, mint a többi.</b> Az egységes firmware-hez töltsd fel és
+      válaszd ki a kívánt verziót a <a href="/settings#firmware">Beállításokban</a>.</li>
+    {% endif %}
+    {% if fw.stale %}
+    <li><b>{{ fw.stale }} telefon több mint {{ fw.stale_limit }} napja nem töltött le konfigurációt.</b> Valószínűleg ki
+      van kapcsolva, vagy nem éri el a szervert, így a változtatásokat és a frissítést sem kapja meg.</li>
+    {% endif %}
+  </ul>
+</section>
+{% endmacro %}

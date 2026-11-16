@@ -39,7 +39,9 @@
   {{ text('prov_polling_time', 'Ellenőrzés időpontja (ÓÓ:PP)') }}
   <label>Telepítendő firmware <select name="firmware_file"><option value="">- nincs frissítés -</option>
     {% for f in firmware %}<option {{ 'selected' if settings.firmware_file == f }}>{{ f }}</option>{% endfor %}</select>
-    <small>A telefon csak akkor frissít, ha a fájl verziója eltér a futótól.</small></label>
+    <small>A telefon csak akkor frissít, ha a fájl verziója eltér a futótól.
+    {%- if fw.versions %} Most a telefonokon: {% for v, n in fw.versions %}<span class="mono">{{ v }}</span> ({{ n }}){{ ', ' if not loop.last }}{% endfor %}.{% endif %}
+    {%- if fw.pending %} {{ fw.pending }} telefon frissítésre vár, lásd a <a href="/phones#fw-summary">Telefonok</a> oldalt.{% endif %}</small></label>
 </section>
 
 <section class="card grid">
@@ -111,7 +113,7 @@
   {% endif %}
 </section>
 
-<section class="card">
+<section class="card" id="firmware">
   <h2>Firmware feltöltése</h2>
   <form method="post" action="/settings/firmware" enctype="multipart/form-data" class="row wrap">
     <input type="file" name="file" required accept=".ld,.zip,.bin"><button class="secondary">Firmware feltöltése</button>

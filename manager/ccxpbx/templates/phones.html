@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_firmware.html" import fw_summary, fw_cell %}
 {% block title %}Telefonok · CCXPBX{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -12,6 +13,7 @@
   </div>
 </div>
 <div id="ami-error" class="flash err" {% if not ami_error %}hidden{% endif %}>Az Asterisk nem érhető el: <span>{{ ami_error or '' }}</span></div>
+{% if phones %}{{ fw_summary(fw) }}{% endif %}
 <section class="card scroll-x" style="padding: 8px 12px">
 <table>
   <thead><tr><th>MAC</th><th>Megnevezés</th><th>Vonalak</th><th>Állapot</th><th>IP</th><th>Firmware</th><th>Utolsó provisioning</th></tr></thead>
@@ -24,7 +26,7 @@
     <td class="js-status"><span class="status">{% if not p.lines %}<span class="dot off"></span>nincs vonal
         {% elif p.registered %}<span class="dot free"></span>Regisztrált{% else %}<span class="dot off"></span>Offline{% endif %}</span></td>
     <td class="mono js-ip">{{ p.seen.ip if p.seen }}</td>
-    <td class="mono js-fw">{{ p.seen.firmware if p.seen }}</td>
+    <td class="js-fw">{{ fw_cell({"firmware": p.seen.firmware if p.seen, "fw_state": p.fw.state, "fw_label": p.fw.label_text, "stale_days": p.fw.stale_days}) }}</td>
     <td class="mono small js-seen">{{ p.seen.last_seen|localtime(settings.timezone_name) if p.seen }}</td>
   </tr>
   {% else %}

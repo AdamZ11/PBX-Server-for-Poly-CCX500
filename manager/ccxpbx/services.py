@@ -44,6 +44,69 @@ def record_seen(conn, mac: str, ip: str, ua: str, filename: str) -> None:
     )
 
 
+STALE_DAYS = 3   # a phone that has not fetched its config for this long is reported
+
+FW_LABELS = {
+    "ok": "naprakész",
+    "pending": "frissítésre vár",
+    "differs": "eltér a többitől",
+    "unknown": "nem ismert",
+    "never": "még nem jelentkezett",
+}
+
+
+def _version_key(v: str) -> tuple:
+    return tuple(int(x) for x in v.split(".")) if v else ()
+
+
+def firmware_report(conn, settings: dict) -> dict:
+    """Which firmware every phone runs, compared with the selected firmware file (or, without one,
+    with the version most phones run). Also flags phones that stopped fetching their configuration."""
+    target_file = settings.get("firmware_file", "") or ""
+    target = parse_user_agent(target_file)[1] if target_file else ""
+    rows = [dict(r) for r in conn.execute(
+        "SELECT p.mac, p.label, s.model, s.firmware, s.last_seen, "
+        "CAST(julianday('now') - julianday(s.last_seen) AS REAL) AS age_days "
+        "FROM phones p LEFT JOIN seen_devices s ON s.mac = p.mac ORDER BY p.label, p.mac")]
+    counts: dict[str, int] = {}
+    for r in rows:
+        if r["firmware"]:
+            counts[r["firmware"]] = counts.get(r["firmware"], 0) + 1
+    versions = sorted(counts.items(), key=lambda kv: (-kv[1], [-x for x in _version_key(kv[0])]))
+    reference = target or (versions[0][0] if versions else "")
+    for r in rows:
+        fw = r["firmware"] or ""
+        if not r["last_seen"]:
+            state = "never"
+        elif not fw:
+            state = "unknown"
+        elif fw == reference or not reference:
+            state = "ok"
+        else:
+            state = "pending" if target else "differs"
+        r["state"] = state
+        r["label_text"] = FW_LABELS[state]
+        r["older"] = bool(fw and reference and _version_key(fw) < _version_key(reference))
+        age = r.pop("age_days")
+        r["stale_days"] = int(age) if age is not None and age >= STALE_DAYS else 0
+    issues = [r for r in rows if r["state"] in ("pending", "differs") or r["stale_days"]]
+    return {
+        "target": target,
+        "target_file": target_file,
+        "target_unparsed": bool(target_file and not target),
+        "reference": reference,
+        "versions": versions,
+        "mixed": len(versions) > 1,
+        "phones": rows,
+        "by_mac": {r["mac"]: r for r in rows},
+        "pending": sum(r["state"] == "pending" for r in rows),
+        "differs": sum(r["state"] == "differs" for r in rows),
+        "stale": sum(bool(r["stale_days"]) for r in rows),
+        "issues": len(issues),
+        "stale_limit": STALE_DAYS,
+    }
+
+
 def apply_config(conn) -> dict:
     """Write the Asterisk include files and reload the affected modules."""
     snap = db.snapshot(conn)

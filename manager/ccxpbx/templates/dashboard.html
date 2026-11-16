@@ -13,6 +13,10 @@
 {% if ip_mismatch %}<div class="flash err">A beállított szerver IP ({{ settings.server_host }}) nem ennek a gépnek a címe
   (a gép címe: {{ ip_mismatch|join(', ') }}). A telefonok így nem érik el a szervert. Javítsd a
   <a href="/settings">Beállításokban</a>, és adj a gépnek fix IP-t (DHCP-foglalás a routeren).</div>{% endif %}
+{% if live.fw.issues %}<div class="flash warn">Firmware: {% if live.fw.pending %}{{ live.fw.pending }} telefon frissítésre vár{% endif %}
+  {%- if live.fw.differs %}{{ ', ' if live.fw.pending }}{{ live.fw.differs }} telefon eltérő verziót futtat{% endif %}
+  {%- if live.fw.stale %}{{ ', ' if live.fw.pending or live.fw.differs }}{{ live.fw.stale }} telefon több mint {{ live.fw.stale_limit }} napja nem jelentkezett{% endif %}.
+  <a href="/phones#fw-summary">Részletek</a></div>{% endif %}
 {% if not settings.server_host %}<div class="flash warn">Még nincs megadva a szerver IP címe. Állítsd be a <a href="/settings">Beállításokban</a>.</div>{% endif %}
 
 <div class="tiles">
