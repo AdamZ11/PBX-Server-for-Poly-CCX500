@@ -16,7 +16,19 @@ from .services import get_db
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
-templates.env.globals.update(plan=plan, KEY_TYPES=plan.KEY_TYPES)
+STATIC_DIR = Path(__file__).parent / "static"
+
+
+def static_url(name: str) -> str:
+    """/static/<name>?v=<mtime>: browsers cache static files, so a new version gets a new URL
+    after an update (otherwise an old style.css / live.js stays in use until a hard refresh)."""
+    try:
+        return f"/static/{name}?v={int((STATIC_DIR / name).stat().st_mtime)}"
+    except OSError:
+        return f"/static/{name}"
+
+
+templates.env.globals.update(plan=plan, KEY_TYPES=plan.KEY_TYPES, static_url=static_url)
 
 
 def localtime(value: str | None, tz_name: str = "") -> str:

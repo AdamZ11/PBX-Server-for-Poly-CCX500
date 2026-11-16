@@ -93,6 +93,7 @@ def test_full_flow(client):
     assert "Most a telefonokon" in client.get("/settings").text
     page = client.get("/callmap").text
     assert 'id="cm-svg"' in page and '"ext:2001"' in page
+    assert "/static/style.css?v=" in page and "/static/callmap.js?v=" in page   # new URL after every update
     assert client.get("/api/live").json()["callmap"]["edges"] == []
 
     # apply writes the Asterisk files even when Asterisk is not running

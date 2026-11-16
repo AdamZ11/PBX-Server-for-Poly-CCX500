@@ -125,7 +125,7 @@
       if (r.redirected || r.status === 401) { location.href = "/login"; return; }
       if (!r.ok) throw new Error("HTTP " + r.status);
       const d = await r.json();
-      render[page](d);
+      if (render[page]) render[page](d);   // an outdated cached script must not look like a lost connection
       amiError(d.ami_error);
       server(d.server);
       if (indicator) { indicator.textContent = "Élő · " + d.time; indicator.className = "live ok"; }

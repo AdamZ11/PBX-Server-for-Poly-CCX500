@@ -39,5 +39,5 @@
 
 <script type="application/json" id="editor-data">{{ editor|tojson }}</script>
 <script type="application/json" id="key-types">{{ key_types|tojson }}</script>
-<script src="/static/screen.js" defer></script>
+<script src="{{ static_url('screen.js') }}" defer></script>
 {% endblock %}

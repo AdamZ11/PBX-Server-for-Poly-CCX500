@@ -10,7 +10,7 @@
 <link rel="icon" href="/static/brand/favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="{{ static_url('style.css') }}">
 </head>
 <body{% if live_page %} data-live="{{ live_page }}"{% endif %}>
 {% if user %}
@@ -62,6 +62,6 @@
 {% else %}
 {% block public %}{% endblock %}
 {% endif %}
-{% if live_page %}<script src="/static/live.js" defer></script>{% endif %}
+{% if live_page %}<script src="{{ static_url('live.js') }}" defer></script>{% endif %}
 </body>
 </html>
