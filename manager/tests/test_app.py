@@ -400,3 +400,14 @@ def test_callmap_actions(client, monkeypatch):
     assert calls == [("hangup", "PJSIP/3002-0001")]                          # not 30021
     db.set_setting(conn, "callmap_spy", "0"); conn.commit()
     assert ami.hint_state("16") == "hold"
+
+
+def test_updates_page_in_docker(client, monkeypatch):
+    from ccxpbx import updates
+    login(client)
+    monkeypatch.setenv("CCXPBX_DOCKER", "1")
+    monkeypatch.setenv("CCXPBX_VERSION", "1a2b3c4")
+    page = client.get("/updates").text
+    assert "Docker telepítés" in page and "1a2b3c4" in page and "sudo ./install/install.sh" not in page
+    client.post("/updates/apply")
+    assert not updates.pending()   # nothing is asked from the (absent) git helper

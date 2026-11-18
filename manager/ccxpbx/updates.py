@@ -5,6 +5,7 @@ update by writing the word "check" or "apply" into UPDATE_DIR/request, which a s
 watches. The web app never runs git or the installer itself and never gets root.
 """
 import json
+import os
 import time
 from pathlib import Path
 
@@ -17,8 +18,16 @@ def update_dir() -> Path:
     return config.DATA_DIR / "update"
 
 
+def in_docker() -> bool:
+    """The container image is updated by pulling a new image, not by the git helper."""
+    return os.environ.get("CCXPBX_DOCKER") == "1"
+
+
 def status() -> dict:
     """Current update status; {"installed": False} until the helper has run once."""
+    if in_docker():
+        return {"installed": False, "docker": True, "available": False, "pending": "",
+                "version": os.environ.get("CCXPBX_VERSION", "")}
     path = update_dir() / "status.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))

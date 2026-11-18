@@ -1,6 +1,7 @@
 """Command line helper:  python -m ccxpbx.cli <command>
 
-  init [--host IP]          create the database, set server address, print generated secrets
+  init [--host IP] [--http-port N]
+                            create the database, set server address / web port, print generated secrets
   set-admin-password [PW]   set the web UI admin password (random if omitted, printed)
   apply                     write Asterisk config files and reload Asterisk
   resync-all                send check-sync to every phone
@@ -17,6 +18,7 @@ def main(argv=None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     p_init = sub.add_parser("init")
     p_init.add_argument("--host", default="")
+    p_init.add_argument("--http-port", default="")
     p_pw = sub.add_parser("set-admin-password")
     p_pw.add_argument("password", nargs="?")
     sub.add_parser("apply")
@@ -32,6 +34,11 @@ def main(argv=None) -> int:
         if args.cmd == "init":
             if args.host:
                 db.set_setting(conn, "server_host", args.host)
+            if args.http_port:
+                if not args.http_port.isdigit() or not 1 <= int(args.http_port) <= 65535:
+                    print("--http-port must be a port number", file=sys.stderr)
+                    return 1
+                db.set_setting(conn, "http_port", args.http_port)
             if not db.get_settings(conn)["admin_password_hash"]:
                 pw = db.gen_secret(14)
                 db.set_setting(conn, "admin_password_hash", httpauth.hash_password(pw))
@@ -73,7 +80,8 @@ def _print_secrets(conn) -> None:
     print(f"PROV_PASSWORD={s['prov_password']}")
     print(f"PHONE_ADMIN_PASSWORD={s['phone_admin_password']}")
     host = s["server_host"] or "<server-ip>"
-    print(f"PROV_URL=http://{s['prov_user']}:{s['prov_password']}@{host}/prov")
+    port = "" if s.get("http_port", "80") == "80" else f":{s['http_port']}"
+    print(f"PROV_URL=http://{s['prov_user']}:{s['prov_password']}@{host}{port}/prov")
 
 
 if __name__ == "__main__":

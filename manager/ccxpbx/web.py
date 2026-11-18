@@ -997,7 +997,9 @@ def updates_action(action: str, request: Request, _=Depends(require_login)):
     if action not in ("check", "apply"):
         return redirect("/updates")
     st = updates.status()
-    if not st["installed"]:
+    if st.get("docker"):
+        flash(request, "Docker alatt a frissítés új image letöltésével történik, lásd lent.", "warn")
+    elif not st["installed"]:
         flash(request, "A frissítésfigyelő még nincs telepítve: futtasd le egyszer a telepítőt a szerveren.", "warn")
     elif st.get("state") == "running":
         flash(request, "Már fut egy frissítés.", "warn")

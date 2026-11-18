@@ -1,0 +1,92 @@
+# Builds the CCXPBX container image and publishes it to GitHub Container Registry:
+#   ghcr.io/<owner>/pbx-server-for-poly-ccx500:latest  (main and feature/ccxpbx-initial)
+#   ghcr.io/<owner>/pbx-server-for-poly-ccx500:sha-<commit>
+name: Docker image
+
+on:
+  push:
+    branches: [main, feature/ccxpbx-initial]
+    paths:
+      - "docker/**"
+      - "manager/**"
+      - "asterisk/**"
+      - "install/build-asterisk.sh"
+      - ".github/workflows/docker-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name (lower case)
+        id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ steps.name.outputs.image }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+            type=ref,event=branch
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: ccxpbx:test
+          build-args: |
+            CCXPBX_VERSION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test (Asterisk and the web UI start)
+        run: |
+          docker run -d --name t -e CCXPBX_HOST=127.0.0.1 -e CCXPBX_HTTP_PORT=8080 --network host ccxpbx:test
+          ok=0
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8080/login >/dev/null; then ok=1; break; fi
+            sleep 3
+          done
+          docker logs t
+          docker exec t asterisk -rx "core show version"
+          docker exec t asterisk -rx "pjsip show transports"
+          docker exec t asterisk -rx "manager show connected" || true
+          test "$ok" = 1
+          docker exec t asterisk -rx "core show version" | grep -q "Asterisk 22"
+
+      - name: Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CCXPBX_VERSION=${{ github.sha }}
+          cache-from: type=gha

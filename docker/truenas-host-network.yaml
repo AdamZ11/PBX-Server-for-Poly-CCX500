@@ -1,0 +1,21 @@
+# CCXPBX on TrueNAS SCALE (Apps -> Discover Apps -> ... -> Install via YAML)
+#
+# Host networking: the PBX uses the TrueNAS address. The TrueNAS web UI already listens on 80/443,
+# so the CCXPBX web UI and phone provisioning run on port 8080.
+#
+# Change before installing:
+#   CCXPBX_HOST   -> the TrueNAS IP address the phones reach
+#   /mnt/tank/apps/ccxpbx -> a dataset you created for CCXPBX
+services:
+  ccxpbx:
+    image: ghcr.io/adamz11/pbx-server-for-poly-ccx500:latest
+    container_name: ccxpbx
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      CCXPBX_HOST: "192.168.10.116"
+      CCXPBX_HTTP_PORT: "8080"
+      TZ: "Europe/Budapest"
+    volumes:
+      - /mnt/tank/apps/ccxpbx:/data
+    stop_grace_period: 20s

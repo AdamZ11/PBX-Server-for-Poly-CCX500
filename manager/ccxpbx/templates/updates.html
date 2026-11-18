@@ -4,11 +4,25 @@
 <div class="page-head">
   <div>
     <h1>Frissítések</h1>
-    <p class="muted">A szerver 6 óránként megnézi a GitHubot, és szól, ha új verzió van. A frissítés egy gomb: letölti az újdonságokat és lefuttatja a telepítőt.</p>
+    {% if not update.docker %}<p class="muted">A szerver 6 óránként megnézi a GitHubot, és szól, ha új verzió van. A frissítés egy gomb: letölti az újdonságokat és lefuttatja a telepítőt.</p>{% endif %}
   </div>
 </div>
 
-{% if not update.installed %}
+{% if update.docker %}
+<section class="card">
+  <h2>Docker telepítés</h2>
+  <p>Telepített image: <span class="mono">{{ update.version or 'ismeretlen' }}</span></p>
+  <p>Konténerben a frissítés új image letöltésével történik; az adatok (mellékek, telefonok, hangposta,
+    felvételek, tanúsítványok) a <span class="mono">/data</span> kötetben vannak, ezért megmaradnak.</p>
+  <ul>
+    <li><b>TrueNAS:</b> ha az <i>Apps</i> oldalon a ccxpbx mellett megjelenik az <i>Update</i>, azzal; különben a TrueNAS
+      <i>Shell</i>-ben <span class="mono">sudo docker pull ghcr.io/adamz11/pbx-server-for-poly-ccx500:latest</span>, majd az
+      <i>Apps</i> oldalon a ccxpbx <i>Stop</i> és <i>Start</i>. Részletek: <span class="mono">docs/TRUENAS.md</span>.</li>
+    <li><b>Docker Compose:</b> <span class="mono">docker compose pull &amp;&amp; docker compose up -d</span></li>
+  </ul>
+  <p class="muted small">A frissítés alatt a telefonok kb. fél percig nem tudnak hívni.</p>
+</section>
+{% elif not update.installed %}
 <section class="card warn">
   <h2>A frissítésfigyelő még nincs telepítve</h2>
   <p>Ez egy egyszeri lépés. Futtasd le a szerveren a repó mappájában, utána minden frissítés innen megy, parancssor nélkül:</p>

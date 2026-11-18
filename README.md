@@ -64,6 +64,13 @@ Az Asterisk fordítása Pi 4-en 30–60 perc. SD kártya helyett SSD ajánlott. 
 Költözéskor elég a `/var/lib/ccxpbx/` könyvtárat (adatbázis, feltöltött firmware) és az `/etc/ccxpbx/ccxpbx.env`
 fájlt átmásolni, majd a telepítőt lefuttatni.
 
+### 3. TrueNAS SCALE / Docker
+
+Kész konténer image (Asterisk 22 + kezelő): `ghcr.io/adamz11/pbx-server-for-poly-ccx500:latest`, a GitHub minden
+módosítás után elkészíti. TrueNAS SCALE 24.10+ alatt *Apps* → *Install via YAML*, a teljes leírás:
+[docs/TRUENAS.md](docs/TRUENAS.md). Az adatok egyetlen kötetben (`/data`) vannak; host hálózati módban a webes
+felület és a provisioning a **8080**-as porton fut (a 80-ast a TrueNAS foglalja).
+
 ### Frissítés a webes felületről
 
 A telepítő egy frissítésfigyelőt is feltesz: a szerver 6 óránként megnézi a GitHubot, és ha új verzió van, a felület
@@ -152,6 +159,7 @@ manager/ccxpbx/    provisioning + webes kezelő (FastAPI)
   polyrest.py      Poly REST API kliens
   ami.py           Asterisk Manager kliens
 install/           telepítő, Asterisk fordítás, systemd unitok, tűzfal/fail2ban/dnsmasq példák
+docker/            konténer image (Dockerfile, indítószkript, supervisord) és TrueNAS YAML példák
 docs/              részletes leírás és hardveres ellenőrzőlista
 ```
 

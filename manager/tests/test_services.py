@@ -108,3 +108,20 @@ def test_firmware_report_unparsable_file_name():
     conn = _fw_db([("aa", "A", "9.5.1.0130", 0), ("bb", "B", "9.5.1.0130", 0)])
     fw = services.firmware_report(conn, {"firmware_file": "sip.ld"})
     assert fw["target_unparsed"] and not fw["issues"] and not fw["mixed"]
+
+
+def test_update_status_in_docker(monkeypatch):
+    from ccxpbx import updates
+    monkeypatch.setenv("CCXPBX_DOCKER", "1")
+    monkeypatch.setenv("CCXPBX_VERSION", "abc1234")
+    st = updates.status()
+    assert st["docker"] and st["version"] == "abc1234" and not st["available"] and not st["installed"]
+
+
+def test_cli_init_sets_http_port(capsys):
+    from ccxpbx import cli
+    assert cli.main(["init", "--http-port", "8080"]) == 0
+    assert db.get_settings(db.connect())["http_port"] == "8080"
+    assert ":8080/prov" in capsys.readouterr().out
+    assert cli.main(["init", "--http-port", "x"]) == 1
+    assert cli.main(["init", "--http-port", "80"]) == 0
